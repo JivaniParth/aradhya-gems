@@ -34,11 +34,22 @@ export default function CheckoutPage() {
     setIsProcessing(true);
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 2000));
-    console.log('Order Data:', { ...data, items, total });
+    
+    const orderData = { ...data, items, total };
+    console.log('Order Data:', orderData);
+    
+    // Clear cart and navigate to confirmation
     clearCart();
     setIsProcessing(false);
-    alert("Order Placed Successfully! (Mock)");
-    navigate('/');
+    
+    navigate('/order-confirmation', { 
+      state: { 
+        order: { 
+          id: 'ORD-' + Math.random().toString(36).substr(2, 9).toUpperCase(),
+          total 
+        } 
+      } 
+    });
   };
 
   return (
