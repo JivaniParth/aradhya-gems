@@ -109,11 +109,12 @@ const orderSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Generate order ID before saving
+// Generate order ID atomically before saving (prevents duplicates under concurrency)
 orderSchema.pre('save', async function(next) {
   if (!this.orderId) {
-    const count = await mongoose.model('Order').countDocuments();
-    this.orderId = `ORD-${String(count + 1).padStart(5, '0')}`;
+    const Counter = require('./Counter');
+    const seq = await Counter.getNextSequence('order');
+    this.orderId = `ORD-${String(seq).padStart(5, '0')}`;
   }
   next();
 });

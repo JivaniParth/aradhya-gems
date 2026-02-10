@@ -23,8 +23,8 @@ router.get('/stats', asyncHandler(async (req, res) => {
     Product.countDocuments({ isActive: true }),
     Order.countDocuments(),
     Order.aggregate([
-      { $match: { paymentStatus: 'paid' } },
-      { $group: { _id: null, totalRevenue: { $sum: '$total' } } }
+      { $match: { paymentStatus: 'paid', status: { $nin: ['cancelled', 'returned'] } } },
+      { $group: { _id: null, totalRevenue: { $sum: '$total' }, totalTax: { $sum: '$tax' }, totalShipping: { $sum: '$shippingCost' }, totalDiscount: { $sum: '$discount' } } }
     ])
   ]);
 

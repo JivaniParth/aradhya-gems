@@ -10,15 +10,51 @@ const { asyncHandler } = require('../middleware/error');
 // @access  Private
 router.get('/', protect, asyncHandler(async (req, res) => {
   let cart = await Cart.findOne({ user: req.user.id })
-    .populate('items.product', 'name image price stock sku');
+    .populate('items.product', 'name image price stock sku isActive');
 
   if (!cart) {
-    cart = { items: [], total: 0, itemCount: 0 };
+    return res.json({
+      success: true,
+      data: { cart: { items: [], total: 0, itemCount: 0 } }
+    });
   }
+
+  // Refresh prices from DB and remove inactive products
+  let pricesUpdated = false;
+  cart.items = cart.items.filter(item => {
+    if (!item.product || !item.product.isActive) return false;
+    if (item.price !== item.product.price) {
+      item.price = item.product.price;
+      pricesUpdated = true;
+    }
+    // Cap quantity to available stock
+    if (item.quantity > item.product.stock) {
+      item.quantity = item.product.stock;
+      pricesUpdated = true;
+    }
+    return item.quantity > 0;
+  });
+
+  if (pricesUpdated) {
+    cart.updatedAt = new Date();
+    await cart.save();
+    // Re-populate after save
+    cart = await Cart.findById(cart._id)
+      .populate('items.product', 'name image price stock sku isActive');
+  }
+
+  // Calculate server-side totals for display
+  const subtotal = Math.round(cart.items.reduce((sum, item) => sum + item.price * item.quantity, 0) * 100) / 100;
+  const shippingCost = subtotal >= 50000 ? 0 : 500;
+  const tax = Math.round(subtotal * 0.03 * 100) / 100;
+  const total = Math.round((subtotal + tax + shippingCost) * 100) / 100;
 
   res.json({
     success: true,
-    data: { cart }
+    data: {
+      cart,
+      pricing: { subtotal, shippingCost, tax, total }
+    }
   });
 }));
 

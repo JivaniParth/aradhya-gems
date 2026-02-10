@@ -7,6 +7,8 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const connectDB = require('./config/db');
 const { errorHandler } = require('./middleware/error');
 
@@ -17,6 +19,7 @@ const cartRoutes = require('./routes/cart');
 const orderRoutes = require('./routes/orders');
 const wishlistRoutes = require('./routes/wishlist');
 const adminRoutes = require('./routes/admin');
+const couponRoutes = require('./routes/coupons');
 
 // Initialize Express app
 const app = express();
@@ -35,6 +38,28 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// Security headers
+app.use(helmet());
+
+// Rate limiting — 100 requests per 15 min per IP
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many requests, please try again later.' }
+});
+
+// Stricter limiter for order creation (5 per 15 min per IP)
+const orderLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { success: false, message: 'Too many order attempts, please try again later.' }
+});
+
+// Apply general rate limiter to all API routes
+app.use('/api/', apiLimiter);
 
 // Body parser
 app.use(express.json({ limit: '10mb' }));
@@ -63,9 +88,10 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/cart', cartRoutes);
-app.use('/api/orders', orderRoutes);
+app.use('/api/orders', orderLimiter, orderRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/coupons', couponRoutes);
 
 // ===================
 // ERROR HANDLING

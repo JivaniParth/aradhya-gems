@@ -1,111 +1,112 @@
 import { create } from 'zustand';
-
-// Mock orders data for UI demonstration
-const mockOrders = [
-  {
-    id: 'ORD-001',
-    userId: '2',
-    items: [
-      { productId: '1', name: 'Eternal Gold Necklace', quantity: 1, price: 1250 },
-      { productId: '6', name: 'Pearl Studs', quantity: 2, price: 220 },
-    ],
-    total: 1690,
-    status: 'delivered',
-    paymentStatus: 'paid',
-    shippingAddress: {
-      firstName: 'John',
-      lastName: 'Doe',
-      address: '123 Main St',
-      city: 'New York',
-      postalCode: '10001',
-    },
-    createdAt: '2026-01-20T10:30:00Z',
-    updatedAt: '2026-01-25T14:00:00Z',
-  },
-  {
-    id: 'ORD-002',
-    userId: '2',
-    items: [
-      { productId: '3', name: 'Diamond Solitaire Ring', quantity: 1, price: 3400 },
-    ],
-    total: 3400,
-    status: 'processing',
-    paymentStatus: 'paid',
-    shippingAddress: {
-      firstName: 'John',
-      lastName: 'Doe',
-      address: '123 Main St',
-      city: 'New York',
-      postalCode: '10001',
-    },
-    createdAt: '2026-01-26T09:15:00Z',
-    updatedAt: '2026-01-26T09:15:00Z',
-  },
-];
+import { orderAPI } from '../services/api';
 
 export const useOrderStore = create((set, get) => ({
-  orders: mockOrders,
+  orders: [],
   currentOrder: null,
   isLoading: false,
   error: null,
+  pagination: null,
 
-  // Create a new order
+  // Create a new order (server-side calculation is the ONLY source of truth)
   createOrder: async (orderData) => {
     set({ isLoading: true, error: null });
-    
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    const newOrder = {
-      id: `ORD-${String(get().orders.length + 1).padStart(3, '0')}`,
-      ...orderData,
-      status: 'pending',
-      paymentStatus: 'pending',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    
-    set(state => ({
-      orders: [...state.orders, newOrder],
-      currentOrder: newOrder,
-      isLoading: false,
-    }));
-    
-    return { success: true, order: newOrder };
+    try {
+      const { data } = await orderAPI.create(orderData);
+      set({
+        currentOrder: data.data.order,
+        isLoading: false
+      });
+      return { success: true, order: data.data.order };
+    } catch (err) {
+      const message = err.response?.data?.message || 'Failed to create order';
+      set({ isLoading: false, error: message });
+      return { success: false, error: message };
+    }
   },
 
-  // Get orders for a specific user
-  getUserOrders: (userId) => {
-    return get().orders.filter(order => order.userId === userId);
+  // Fetch user's orders
+  fetchUserOrders: async (params = {}) => {
+    set({ isLoading: true, error: null });
+    try {
+      const { data } = await orderAPI.getAll(params);
+      set({
+        orders: data.data.orders,
+        pagination: data.data.pagination,
+        isLoading: false
+      });
+    } catch (err) {
+      set({ isLoading: false, error: err.response?.data?.message || 'Failed to fetch orders' });
+    }
   },
 
-  // Get all orders (admin)
-  getAllOrders: () => {
-    return get().orders;
+  // Get single order by ID
+  fetchOrderById: async (orderId) => {
+    set({ isLoading: true, error: null });
+    try {
+      const { data } = await orderAPI.getById(orderId);
+      set({ currentOrder: data.data.order, isLoading: false });
+      return data.data.order;
+    } catch (err) {
+      set({ isLoading: false, error: err.response?.data?.message || 'Order not found' });
+      return null;
+    }
   },
 
-  // Update order status (admin)
-  updateOrderStatus: async (orderId, status) => {
-    set({ isLoading: true });
-    
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    set(state => ({
-      orders: state.orders.map(order =>
-        order.id === orderId
-          ? { ...order, status, updatedAt: new Date().toISOString() }
-          : order
-      ),
-      isLoading: false,
-    }));
-    
-    return { success: true };
+  // Cancel order
+  cancelOrder: async (orderId) => {
+    set({ isLoading: true, error: null });
+    try {
+      const { data } = await orderAPI.cancel(orderId);
+      // Update local list
+      set(state => ({
+        orders: state.orders.map(o =>
+          o._id === orderId ? data.data.order : o
+        ),
+        isLoading: false
+      }));
+      return { success: true };
+    } catch (err) {
+      const message = err.response?.data?.message || 'Failed to cancel order';
+      set({ isLoading: false, error: message });
+      return { success: false, error: message };
+    }
   },
 
-  // Get order by ID
-  getOrderById: (orderId) => {
-    return get().orders.find(order => order.id === orderId);
+  // ── Admin methods ─────────────────────────────
+  fetchAllOrders: async (params = {}) => {
+    set({ isLoading: true, error: null });
+    try {
+      const { data } = await orderAPI.getAllAdmin(params);
+      set({
+        orders: data.data.orders,
+        pagination: data.data.pagination,
+        stats: data.data.stats,
+        isLoading: false
+      });
+    } catch (err) {
+      set({ isLoading: false, error: err.response?.data?.message || 'Failed to fetch orders' });
+    }
   },
 
-  // Clear current order
+  updateOrderStatus: async (orderId, statusData) => {
+    set({ isLoading: true, error: null });
+    try {
+      const { data } = await orderAPI.updateStatus(orderId, statusData);
+      set(state => ({
+        orders: state.orders.map(o =>
+          o._id === orderId ? data.data.order : o
+        ),
+        isLoading: false
+      }));
+      return { success: true };
+    } catch (err) {
+      const message = err.response?.data?.message || 'Failed to update status';
+      set({ isLoading: false, error: message });
+      return { success: false, error: message };
+    }
+  },
+
   clearCurrentOrder: () => set({ currentOrder: null }),
+  clearError: () => set({ error: null })
 }));

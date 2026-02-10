@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
-import { Search, Eye, MoreVertical } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Eye, MoreVertical, Loader2 } from 'lucide-react';
 import { Input } from '../../components/ui/Input';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Modal, ModalBody, ModalFooter } from '../../components/ui/Modal';
+import { useOrderStore } from '../../store/useOrderStore';
 
 const ORDER_STATUSES = [
   { value: 'all', label: 'All Orders' },
   { value: 'pending', label: 'Pending' },
+  { value: 'confirmed', label: 'Confirmed' },
   { value: 'processing', label: 'Processing' },
   { value: 'shipped', label: 'Shipped' },
   { value: 'delivered', label: 'Delivered' },
@@ -16,91 +18,36 @@ const ORDER_STATUSES = [
 
 const statusColors = {
   pending: 'warning',
+  confirmed: 'default',
   processing: 'default',
   shipped: 'default',
   delivered: 'success',
   cancelled: 'danger',
 };
 
-// Mock extended orders data
-const mockOrders = [
-  {
-    id: 'ORD-001',
-    customer: { name: 'John Doe', email: 'john@example.com' },
-    items: [
-      { name: 'Eternal Gold Necklace', quantity: 1, price: 1250 },
-      { name: 'Pearl Studs', quantity: 2, price: 220 },
-    ],
-    total: 1690,
-    status: 'delivered',
-    paymentStatus: 'paid',
-    shippingAddress: '123 Main St, New York, NY 10001',
-    createdAt: '2026-01-20T10:30:00Z',
-  },
-  {
-    id: 'ORD-002',
-    customer: { name: 'Jane Smith', email: 'jane@example.com' },
-    items: [
-      { name: 'Diamond Solitaire Ring', quantity: 1, price: 3400 },
-    ],
-    total: 3400,
-    status: 'processing',
-    paymentStatus: 'paid',
-    shippingAddress: '456 Oak Ave, Los Angeles, CA 90001',
-    createdAt: '2026-01-26T09:15:00Z',
-  },
-  {
-    id: 'ORD-003',
-    customer: { name: 'Mike Johnson', email: 'mike@example.com' },
-    items: [
-      { name: 'Sapphire Drop Earrings', quantity: 1, price: 890 },
-    ],
-    total: 890,
-    status: 'shipped',
-    paymentStatus: 'paid',
-    shippingAddress: '789 Pine Rd, Chicago, IL 60601',
-    createdAt: '2026-01-26T14:20:00Z',
-  },
-  {
-    id: 'ORD-004',
-    customer: { name: 'Sarah Wilson', email: 'sarah@example.com' },
-    items: [
-      { name: 'Diamond Eternity Band', quantity: 1, price: 2100 },
-    ],
-    total: 2100,
-    status: 'pending',
-    paymentStatus: 'pending',
-    shippingAddress: '321 Elm St, Houston, TX 77001',
-    createdAt: '2026-01-27T08:45:00Z',
-  },
-  {
-    id: 'ORD-005',
-    customer: { name: 'Tom Brown', email: 'tom@example.com' },
-    items: [
-      { name: 'Gold Chain Bracelet', quantity: 1, price: 550 },
-    ],
-    total: 550,
-    status: 'delivered',
-    paymentStatus: 'paid',
-    shippingAddress: '654 Maple Dr, Phoenix, AZ 85001',
-    createdAt: '2026-01-24T11:30:00Z',
-  },
-];
-
 export default function OrderManagement() {
+  const { orders, isLoading, fetchAllOrders, updateOrderStatus } = useOrderStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [updateStatusModal, setUpdateStatusModal] = useState({ open: false, order: null });
   const [newStatus, setNewStatus] = useState('');
 
-  // Filter orders
-  const filteredOrders = mockOrders.filter(order => {
-    const matchesSearch = order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         order.customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         order.customer.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
-    return matchesSearch && matchesStatus;
+  useEffect(() => {
+    const params = {};
+    if (statusFilter !== 'all') params.status = statusFilter;
+    fetchAllOrders(params);
+  }, [statusFilter]);
+
+  // Client-side search filtering on already fetched orders
+  const filteredOrders = orders.filter(order => {
+    const searchLower = searchTerm.toLowerCase();
+    const matchesSearch = !searchTerm ||
+      (order.orderId || '').toLowerCase().includes(searchLower) ||
+      (order.user?.firstName || '').toLowerCase().includes(searchLower) ||
+      (order.user?.lastName || '').toLowerCase().includes(searchLower) ||
+      (order.user?.email || '').toLowerCase().includes(searchLower);
+    return matchesSearch;
   });
 
   const formatDate = (dateString) => {
@@ -118,10 +65,12 @@ export default function OrderManagement() {
     setUpdateStatusModal({ open: true, order });
   };
 
-  const handleUpdateStatus = () => {
-    // Mock update - in production, this would call the API
-    console.log('Updating order', updateStatusModal.order?.id, 'to', newStatus);
-    setUpdateStatusModal({ open: false, order: null });
+  const handleUpdateStatus = async () => {
+    if (!updateStatusModal.order) return;
+    const result = await updateOrderStatus(updateStatusModal.order._id, { status: newStatus });
+    if (result.success) {
+      setUpdateStatusModal({ open: false, order: null });
+    }
   };
 
   return (
@@ -158,7 +107,15 @@ export default function OrderManagement() {
         </div>
       </div>
 
+      {/* Loading */}
+      {isLoading && (
+        <div className="flex justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      )}
+
       {/* Orders Table */}
+      {!isLoading && (
       <div className="bg-white rounded-lg border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -176,18 +133,18 @@ export default function OrderManagement() {
             </thead>
             <tbody className="divide-y">
               {filteredOrders.map((order) => (
-                <tr key={order.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 font-medium text-secondary">{order.id}</td>
+                <tr key={order._id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 font-medium text-secondary">{order.orderId}</td>
                   <td className="px-6 py-4">
                     <div>
-                      <p className="text-sm font-medium">{order.customer.name}</p>
-                      <p className="text-xs text-gray-500">{order.customer.email}</p>
+                      <p className="text-sm font-medium">{order.user?.firstName} {order.user?.lastName}</p>
+                      <p className="text-xs text-gray-500">{order.user?.email}</p>
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">
                     {order.items.length} item{order.items.length > 1 ? 's' : ''}
                   </td>
-                  <td className="px-6 py-4 font-medium">${order.total.toLocaleString()}</td>
+                  <td className="px-6 py-4 font-medium">₹{(order.total || 0).toLocaleString()}</td>
                   <td className="px-6 py-4">
                     <Badge variant={statusColors[order.status]}>
                       {order.status}
@@ -231,12 +188,13 @@ export default function OrderManagement() {
           </div>
         )}
       </div>
+      )}
 
       {/* Order Details Modal */}
       <Modal
         isOpen={!!selectedOrder}
         onClose={() => setSelectedOrder(null)}
-        title={`Order ${selectedOrder?.id}`}
+        title={`Order ${selectedOrder?.orderId}`}
         size="lg"
       >
         {selectedOrder && (
@@ -266,14 +224,17 @@ export default function OrderManagement() {
                 {/* Customer Info */}
                 <div>
                   <h3 className="font-medium text-secondary mb-2">Customer</h3>
-                  <p>{selectedOrder.customer.name}</p>
-                  <p className="text-sm text-gray-500">{selectedOrder.customer.email}</p>
+                  <p>{selectedOrder.user?.firstName} {selectedOrder.user?.lastName}</p>
+                  <p className="text-sm text-gray-500">{selectedOrder.user?.email}</p>
                 </div>
 
                 {/* Shipping Address */}
                 <div>
                   <h3 className="font-medium text-secondary mb-2">Shipping Address</h3>
-                  <p className="text-gray-600">{selectedOrder.shippingAddress}</p>
+                  <p className="text-gray-600">
+                    {selectedOrder.shippingAddress?.address}, {selectedOrder.shippingAddress?.city},
+                    {selectedOrder.shippingAddress?.state} {selectedOrder.shippingAddress?.postalCode}
+                  </p>
                 </div>
 
                 {/* Order Items */}
@@ -286,12 +247,30 @@ export default function OrderManagement() {
                           <p className="font-medium">{item.name}</p>
                           <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
                         </div>
-                        <p className="font-medium">${(item.price * item.quantity).toLocaleString()}</p>
+                        <p className="font-medium">₹{(item.price * item.quantity).toLocaleString()}</p>
                       </div>
                     ))}
+                    <div className="flex justify-between p-3 text-sm">
+                      <span className="text-gray-500">Subtotal</span>
+                      <span>₹{(selectedOrder.subtotal || 0).toLocaleString()}</span>
+                    </div>
+                    {selectedOrder.discount > 0 && (
+                      <div className="flex justify-between p-3 text-sm text-green-600">
+                        <span>Discount</span>
+                        <span>-₹{selectedOrder.discount.toLocaleString()}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between p-3 text-sm">
+                      <span className="text-gray-500">Tax</span>
+                      <span>₹{(selectedOrder.tax || 0).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between p-3 text-sm">
+                      <span className="text-gray-500">Shipping</span>
+                      <span>{selectedOrder.shippingCost === 0 ? 'Free' : `₹${selectedOrder.shippingCost}`}</span>
+                    </div>
                     <div className="flex justify-between p-3 bg-gray-50 font-medium">
                       <span>Total</span>
-                      <span>${selectedOrder.total.toLocaleString()}</span>
+                      <span>₹{(selectedOrder.total || 0).toLocaleString()}</span>
                     </div>
                   </div>
                 </div>
@@ -321,7 +300,7 @@ export default function OrderManagement() {
       >
         <ModalBody>
           <p className="text-gray-600 mb-4">
-            Update status for order <strong>{updateStatusModal.order?.id}</strong>
+            Update status for order <strong>{updateStatusModal.order?.orderId}</strong>
           </p>
           <select
             value={newStatus}
@@ -329,8 +308,10 @@ export default function OrderManagement() {
             className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/20"
           >
             <option value="pending">Pending</option>
+            <option value="confirmed">Confirmed</option>
             <option value="processing">Processing</option>
             <option value="shipped">Shipped</option>
+            <option value="out-for-delivery">Out for Delivery</option>
             <option value="delivered">Delivered</option>
             <option value="cancelled">Cancelled</option>
           </select>

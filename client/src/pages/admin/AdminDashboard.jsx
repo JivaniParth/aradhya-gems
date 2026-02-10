@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   DollarSign, 
@@ -8,51 +8,12 @@ import {
   TrendingUp,
   TrendingDown,
   ArrowRight,
-  ArrowLeft
+  ArrowLeft,
+  Loader2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
-import { products } from '../../data/products';
-
-// Mock stats data
-const stats = [
-  {
-    title: 'Total Revenue',
-    value: '$45,231.89',
-    change: '+20.1%',
-    changeType: 'positive',
-    icon: DollarSign,
-  },
-  {
-    title: 'Orders',
-    value: '2,350',
-    change: '+180.1%',
-    changeType: 'positive',
-    icon: ShoppingBag,
-  },
-  {
-    title: 'Products',
-    value: products.length.toString(),
-    change: '+19%',
-    changeType: 'positive',
-    icon: Package,
-  },
-  {
-    title: 'Active Customers',
-    value: '573',
-    change: '-4.5%',
-    changeType: 'negative',
-    icon: Users,
-  },
-];
-
-const recentOrders = [
-  { id: 'ORD-001', customer: 'John Doe', total: '$1,690', status: 'delivered', date: 'Jan 25, 2026' },
-  { id: 'ORD-002', customer: 'Jane Smith', total: '$3,400', status: 'processing', date: 'Jan 26, 2026' },
-  { id: 'ORD-003', customer: 'Mike Johnson', total: '$890', status: 'shipped', date: 'Jan 26, 2026' },
-  { id: 'ORD-004', customer: 'Sarah Wilson', total: '$2,100', status: 'pending', date: 'Jan 27, 2026' },
-  { id: 'ORD-005', customer: 'Tom Brown', total: '$550', status: 'delivered', date: 'Jan 24, 2026' },
-];
+import { adminAPI } from '../../services/api';
 
 const statusColors = {
   pending: 'warning',
@@ -64,6 +25,68 @@ const statusColors = {
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const [dashboardData, setDashboardData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const { data } = await adminAPI.getStats();
+        setDashboardData(data.data);
+      } catch (err) {
+        setError(err.response?.data?.message || 'Failed to load dashboard data');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="p-4 bg-red-50 border border-red-200 rounded text-red-700">{error}</div>
+      </div>
+    );
+  }
+
+  const { overview, recentOrders, lowStockProducts, ordersByStatus } = dashboardData;
+
+  const stats = [
+    {
+      title: 'Total Revenue',
+      value: `₹${(overview.totalRevenue || 0).toLocaleString()}`,
+      icon: DollarSign,
+      changeType: 'positive',
+    },
+    {
+      title: 'Orders',
+      value: String(overview.totalOrders || 0),
+      icon: ShoppingBag,
+      changeType: 'positive',
+    },
+    {
+      title: 'Products',
+      value: String(overview.totalProducts || 0),
+      icon: Package,
+      changeType: 'positive',
+    },
+    {
+      title: 'Customers',
+      value: String(overview.totalUsers || 0),
+      icon: Users,
+      changeType: 'positive',
+    },
+  ];
 
   return (
     <div className="p-6 lg:p-8">
@@ -79,7 +102,7 @@ export default function AdminDashboard() {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-serif font-bold text-secondary">Dashboard</h1>
-        <p className="text-gray-500 mt-1">Welcome back! Here's what's happening with your store.</p>
+        <p className="text-gray-500 mt-1">Real-time data from your store.</p>
       </div>
 
       {/* Stats Grid */}
@@ -92,29 +115,30 @@ export default function AdminDashboard() {
                   <p className="text-sm text-gray-500 mb-1">{stat.title}</p>
                   <p className="text-2xl font-bold text-secondary">{stat.value}</p>
                 </div>
-                <div className={`p-3 rounded-full ${
-                  stat.changeType === 'positive' ? 'bg-green-100' : 'bg-red-100'
-                }`}>
-                  <stat.icon className={`w-6 h-6 ${
-                    stat.changeType === 'positive' ? 'text-green-600' : 'text-red-600'
-                  }`} />
+                <div className="p-3 rounded-full bg-green-100">
+                  <stat.icon className="w-6 h-6 text-green-600" />
                 </div>
-              </div>
-              <div className="flex items-center mt-4 text-sm">
-                {stat.changeType === 'positive' ? (
-                  <TrendingUp className="w-4 h-4 text-green-600 mr-1" />
-                ) : (
-                  <TrendingDown className="w-4 h-4 text-red-600 mr-1" />
-                )}
-                <span className={stat.changeType === 'positive' ? 'text-green-600' : 'text-red-600'}>
-                  {stat.change}
-                </span>
-                <span className="text-gray-500 ml-1">from last month</span>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      {/* Order Status Breakdown */}
+      {ordersByStatus && ordersByStatus.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-lg font-serif font-semibold text-secondary mb-4">Orders by Status</h2>
+          <div className="flex flex-wrap gap-3">
+            {ordersByStatus.map((s) => (
+              <div key={s._id} className="px-4 py-2 bg-white border rounded-lg text-sm">
+                <Badge variant={statusColors[s._id] || 'default'} className="mr-2">{s._id}</Badge>
+                <span className="font-medium">{s.count}</span>
+                <span className="text-muted-foreground ml-1">(₹{(s.totalAmount || 0).toLocaleString()})</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Recent Orders & Low Stock */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -131,23 +155,28 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentOrders.map((order) => (
+              {(recentOrders || []).map((order) => (
                 <div 
-                  key={order.id} 
+                  key={order._id} 
                   className="flex items-center justify-between py-3 border-b last:border-0"
                 >
                   <div>
-                    <p className="font-medium text-secondary">{order.id}</p>
-                    <p className="text-sm text-gray-500">{order.customer}</p>
+                    <p className="font-medium text-secondary">{order.orderId}</p>
+                    <p className="text-sm text-gray-500">
+                      {order.user?.firstName} {order.user?.lastName}
+                    </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-medium">{order.total}</p>
+                    <p className="font-medium">₹{(order.total || 0).toLocaleString()}</p>
                     <Badge variant={statusColors[order.status]}>
                       {order.status}
                     </Badge>
                   </div>
                 </div>
               ))}
+              {(!recentOrders || recentOrders.length === 0) && (
+                <p className="text-sm text-gray-500 text-center py-4">No orders yet</p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -165,28 +194,23 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {products
-                .filter(p => p.stock <= 5)
-                .slice(0, 5)
-                .map((product) => (
+              {(lowStockProducts || []).map((product) => (
                   <div 
-                    key={product.id} 
+                    key={product._id} 
                     className="flex items-center gap-4 py-3 border-b last:border-0"
                   >
-                    <img 
-                      src={product.image} 
-                      alt={product.name}
-                      className="w-12 h-12 rounded-md object-cover"
-                    />
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-secondary truncate">{product.name}</p>
-                      <p className="text-sm text-gray-500">{product.category}</p>
+                      <p className="text-sm text-gray-500">SKU: {product.sku}</p>
                     </div>
                     <Badge variant={product.stock <= 2 ? 'danger' : 'warning'}>
                       {product.stock} left
                     </Badge>
                   </div>
                 ))}
+              {(!lowStockProducts || lowStockProducts.length === 0) && (
+                <p className="text-sm text-gray-500 text-center py-4">All products well stocked</p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -197,18 +221,18 @@ export default function AdminDashboard() {
         <h2 className="text-lg font-serif font-semibold text-secondary mb-4">Quick Actions</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Link 
-            to="/admin/products/new"
+            to="/admin/products"
             className="p-4 bg-white rounded-lg border hover:border-primary hover:shadow-md transition-all text-center"
           >
             <Package className="w-8 h-8 text-primary mx-auto mb-2" />
-            <span className="text-sm font-medium">Add Product</span>
+            <span className="text-sm font-medium">Products</span>
           </Link>
           <Link 
             to="/admin/orders"
             className="p-4 bg-white rounded-lg border hover:border-primary hover:shadow-md transition-all text-center"
           >
             <ShoppingBag className="w-8 h-8 text-primary mx-auto mb-2" />
-            <span className="text-sm font-medium">View Orders</span>
+            <span className="text-sm font-medium">Orders</span>
           </Link>
           <Link 
             to="/admin/customers"
@@ -222,7 +246,7 @@ export default function AdminDashboard() {
             className="p-4 bg-white rounded-lg border hover:border-primary hover:shadow-md transition-all text-center"
           >
             <DollarSign className="w-8 h-8 text-primary mx-auto mb-2" />
-            <span className="text-sm font-medium">Sales Report</span>
+            <span className="text-sm font-medium">Settings</span>
           </Link>
         </div>
       </div>

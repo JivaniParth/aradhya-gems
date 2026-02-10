@@ -3,6 +3,7 @@ const router = express.Router();
 const Order = require('../models/Order');
 const Cart = require('../models/Cart');
 const Product = require('../models/Product');
+const Coupon = require('../models/Coupon');
 const { protect, authorize } = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/error');
 
@@ -67,7 +68,7 @@ router.get('/:id', protect, asyncHandler(async (req, res) => {
 // @route   POST /api/orders
 // @access  Private
 router.post('/', protect, asyncHandler(async (req, res) => {
-  const { shippingAddress, billingAddress, paymentMethod, notes } = req.body;
+  const { shippingAddress, billingAddress, paymentMethod, notes, couponCode } = req.body;
 
   // Get user's cart
   const cart = await Cart.findOne({ user: req.user.id })
@@ -80,7 +81,7 @@ router.post('/', protect, asyncHandler(async (req, res) => {
     });
   }
 
-  // Verify stock and prepare order items
+  // Verify stock and prepare order items — prices from DB, NOT client
   const orderItems = [];
   let subtotal = 0;
 
@@ -101,6 +102,9 @@ router.post('/', protect, asyncHandler(async (req, res) => {
       });
     }
 
+    // Use DB price, not cart-stored price — prevents price manipulation
+    const lineTotal = Math.round(product.price * item.quantity * 100) / 100;
+
     orderItems.push({
       product: product._id,
       name: product.name,
@@ -109,15 +113,69 @@ router.post('/', protect, asyncHandler(async (req, res) => {
       quantity: item.quantity
     });
 
-    subtotal += product.price * item.quantity;
+    subtotal += lineTotal;
   }
 
-  // Calculate totals
-  const shippingCost = subtotal >= 50000 ? 0 : 500; // Free shipping over ₹50,000
-  const tax = Math.round(subtotal * 0.03); // 3% GST (simplified)
-  const total = subtotal + shippingCost + tax;
+  // Round subtotal
+  subtotal = Math.round(subtotal * 100) / 100;
 
-  // Create order
+  // ── Coupon / Discount ──────────────────────────────────
+  let discount = 0;
+  let appliedCoupon = null;
+
+  if (couponCode) {
+    const coupon = await Coupon.findOne({ code: couponCode.toUpperCase() });
+    if (!coupon) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid coupon code'
+      });
+    }
+
+    const validation = coupon.validateForOrder(req.user.id, subtotal);
+    if (!validation.valid) {
+      return res.status(400).json({
+        success: false,
+        message: validation.message
+      });
+    }
+
+    discount = validation.discount;
+    appliedCoupon = coupon;
+  }
+
+  // ── Calculate totals (server is the ONLY source of truth) ──
+  const taxableAmount = Math.round((subtotal - discount) * 100) / 100;
+  const shippingCost = subtotal >= 50000 ? 0 : 500; // Free shipping over ₹50,000
+  const tax = Math.round(taxableAmount * 0.03 * 100) / 100; // 3% GST
+  const total = Math.round((taxableAmount + tax + shippingCost) * 100) / 100;
+
+  // ── Atomic stock deduction (prevents overselling) ──────
+  const stockUpdates = [];
+  for (const item of cart.items) {
+    const result = await Product.findOneAndUpdate(
+      { _id: item.product._id, stock: { $gte: item.quantity } },
+      { $inc: { stock: -item.quantity } },
+      { new: true }
+    );
+
+    if (!result) {
+      // Rollback all stock changes made so far
+      for (const update of stockUpdates) {
+        await Product.findByIdAndUpdate(update.productId, {
+          $inc: { stock: update.quantity }
+        });
+      }
+      return res.status(400).json({
+        success: false,
+        message: `Insufficient stock for "${item.product.name}". Please refresh your cart.`
+      });
+    }
+
+    stockUpdates.push({ productId: item.product._id, quantity: item.quantity });
+  }
+
+  // ── Create order ──────────────────────────────────────
   const order = await Order.create({
     user: req.user.id,
     items: orderItems,
@@ -127,17 +185,18 @@ router.post('/', protect, asyncHandler(async (req, res) => {
     subtotal,
     shippingCost,
     tax,
+    discount,
     total,
     notes,
     status: 'confirmed',
     paymentStatus: paymentMethod === 'cod' ? 'pending' : 'paid'
   });
 
-  // Update product stock
-  for (const item of cart.items) {
-    await Product.findByIdAndUpdate(item.product._id, {
-      $inc: { stock: -item.quantity }
-    });
+  // ── Mark coupon as used ────────────────────────────────
+  if (appliedCoupon) {
+    appliedCoupon.usedCount += 1;
+    appliedCoupon.usedBy.push({ user: req.user.id });
+    await appliedCoupon.save();
   }
 
   // Clear cart

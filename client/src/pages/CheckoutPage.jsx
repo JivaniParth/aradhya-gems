@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod'; // Import zod
-import { ArrowLeft, CreditCard } from 'lucide-react';
+import { ArrowLeft, CreditCard, AlertCircle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { useCartStore } from '../store/useCartStore';
+import { useOrderStore } from '../store/useOrderStore';
 
 // Define the validation schema
 const checkoutSchema = z.object({
@@ -13,43 +14,70 @@ const checkoutSchema = z.object({
   lastName: z.string().min(2, "Last name is required"),
   address: z.string().min(5, "Address is required"),
   city: z.string().min(2, "City is required"),
+  state: z.string().min(2, "State is required"),
   postalCode: z.string().min(4, "Invalid postal code"),
+  phone: z.string().min(10, "Valid phone number required"),
   email: z.string().email("Invalid email address"),
+  paymentMethod: z.enum(['cod', 'card', 'upi'], { required_error: "Select a payment method" }),
 });
 
 export default function CheckoutPage() {
-  const { items, total, clearCart } = useCartStore();
+  const { items, pricing, coupon, fetchCart, clearCart } = useCartStore();
+  const { createOrder } = useOrderStore();
   const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [orderError, setOrderError] = useState('');
   
   const { register, handleSubmit, formState: { errors } } = useForm({
     resolver: zodResolver(checkoutSchema),
+    defaultValues: { paymentMethod: 'cod' }
   });
+
+  useEffect(() => {
+    fetchCart();
+  }, []);
 
   if (items.length === 0) {
      return <div className="p-20 text-center">Your cart is empty</div>
   }
 
+  const discount = coupon?.discount || 0;
+  const finalTotal = Math.round((pricing.total - discount) * 100) / 100;
+
   const onSubmit = async (data) => {
     setIsProcessing(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    const orderData = { ...data, items, total };
-    console.log('Order Data:', orderData);
-    
-    // Clear cart and navigate to confirmation
-    clearCart();
+    setOrderError('');
+
+    // Build order payload — server recalculates ALL prices
+    const orderPayload = {
+      shippingAddress: {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        address: data.address,
+        city: data.city,
+        state: data.state,
+        postalCode: data.postalCode,
+        phone: data.phone
+      },
+      paymentMethod: data.paymentMethod,
+      couponCode: coupon?.code || undefined,
+      notes: ''
+    };
+
+    const result = await createOrder(orderPayload);
     setIsProcessing(false);
-    
-    navigate('/order-confirmation', { 
-      state: { 
-        order: { 
-          id: 'ORD-' + Math.random().toString(36).substr(2, 9).toUpperCase(),
-          total 
+
+    if (result.success) {
+      // Server has cleared the cart, reset client state
+      await clearCart();
+      navigate('/order-confirmation', { 
+        state: { 
+          order: result.order
         } 
-      } 
-    });
+      });
+    } else {
+      setOrderError(result.error || 'Failed to place order. Please try again.');
+    }
   };
 
   return (
@@ -60,6 +88,13 @@ export default function CheckoutPage() {
       </Link>
       
       <h1 className="text-3xl font-serif mb-8 text-secondary">Checkout</h1>
+
+      {orderError && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
+          <p className="text-red-700 text-sm">{orderError}</p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
         {/* Shipping Form */}
@@ -85,16 +120,27 @@ export default function CheckoutPage() {
                 </div>
 
                 <div>
+                    <label className="block text-sm font-medium mb-1">Phone</label>
+                    <input {...register("phone")} className="w-full border rounded-md p-2 focus:ring-primary focus:border-primary" />
+                    {errors.phone && <span className="text-red-500 text-xs">{errors.phone.message}</span>}
+                </div>
+
+                <div>
                     <label className="block text-sm font-medium mb-1">Address</label>
                     <input {...register("address")} className="w-full border rounded-md p-2 focus:ring-primary focus:border-primary" />
                      {errors.address && <span className="text-red-500 text-xs">{errors.address.message}</span>}
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                      <div>
                         <label className="block text-sm font-medium mb-1">City</label>
                         <input {...register("city")} className="w-full border rounded-md p-2 focus:ring-primary focus:border-primary" />
                         {errors.city && <span className="text-red-500 text-xs">{errors.city.message}</span>}
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium mb-1">State</label>
+                        <input {...register("state")} className="w-full border rounded-md p-2 focus:ring-primary focus:border-primary" />
+                        {errors.state && <span className="text-red-500 text-xs">{errors.state.message}</span>}
                     </div>
                      <div>
                         <label className="block text-sm font-medium mb-1">Postal Code</label>
@@ -103,20 +149,28 @@ export default function CheckoutPage() {
                     </div>
                 </div>
 
-                {/* Mock Payment */}
+                {/* Payment Method */}
                 <div className="border rounded-lg p-4 bg-gray-50 mt-8">
                     <h3 className="font-medium mb-4 flex items-center">
                         <CreditCard className="w-5 h-5 mr-2" /> 
-                        Payment Details
+                        Payment Method
                     </h3>
                     <div className="space-y-3">
-                         <input placeholder="Card Number" className="w-full border rounded-md p-2" disabled value="4242 4242 4242 4242" />
-                         <div className="grid grid-cols-2 gap-4">
-                            <input placeholder="MM/YY" className="w-full border rounded-md p-2" disabled value="12/28" />
-                            <input placeholder="CVC" className="w-full border rounded-md p-2" disabled value="123" />
-                         </div>
+                      <label className="flex items-center gap-3 p-3 border rounded-md cursor-pointer hover:bg-white">
+                        <input type="radio" value="cod" {...register("paymentMethod")} className="accent-primary" />
+                        <span className="text-sm font-medium">Cash on Delivery</span>
+                      </label>
+                      <label className="flex items-center gap-3 p-3 border rounded-md cursor-pointer hover:bg-white">
+                        <input type="radio" value="upi" {...register("paymentMethod")} className="accent-primary" />
+                        <span className="text-sm font-medium">UPI</span>
+                      </label>
+                      <label className="flex items-center gap-3 p-3 border rounded-md cursor-pointer hover:bg-white">
+                        <input type="radio" value="card" {...register("paymentMethod")} className="accent-primary" />
+                        <span className="text-sm font-medium">Card (Coming Soon)</span>
+                      </label>
                     </div>
-                    <p className="text-xs text-gray-400 mt-2">This is a mock payment form for design purposes.</p>
+                    {errors.paymentMethod && <span className="text-red-500 text-xs">{errors.paymentMethod.message}</span>}
+                    <p className="text-xs text-gray-400 mt-3">Payment gateway integration coming soon. COD available now.</p>
                 </div>
            </form>
         </div>
@@ -125,21 +179,46 @@ export default function CheckoutPage() {
         <div>
             <div className="bg-accent/30 p-6 rounded-lg border">
                 <h3 className="text-xl font-serif font-bold mb-6">Order Summary</h3>
-                 <div className="space-y-4 mb-6">
-                    {items.map(item => (
-                        <div key={item.id} className="flex justify-between items-center text-sm">
+                 <div className="space-y-4 mb-4">
+                    {items.map(item => {
+                      const product = item.product || {};
+                      return (
+                        <div key={product._id || item._id} className="flex justify-between items-center text-sm">
                             <div className="flex items-center">
                                 <span className="font-medium mr-2">{item.quantity}x</span>
-                                <span>{item.name}</span>
+                                <span>{product.name || item.name}</span>
                             </div>
-                            <span>${(item.price * item.quantity).toLocaleString()}</span>
+                            <span>₹{((item.price || product.price || 0) * item.quantity).toLocaleString()}</span>
                         </div>
-                    ))}
+                      );
+                    })}
                  </div>
+
+                 <div className="border-t pt-4 space-y-2 mb-4">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Subtotal</span>
+                      <span>₹{pricing.subtotal.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Shipping</span>
+                      <span>{pricing.shippingCost === 0 ? 'Free' : `₹${pricing.shippingCost}`}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Tax (3% GST)</span>
+                      <span>₹{pricing.tax.toLocaleString()}</span>
+                    </div>
+                    {discount > 0 && (
+                      <div className="flex justify-between text-sm text-green-600">
+                        <span>Coupon ({coupon.code})</span>
+                        <span>-₹{discount.toLocaleString()}</span>
+                      </div>
+                    )}
+                 </div>
+
                  <div className="border-t pt-4 mb-6">
                     <div className="flex justify-between font-medium text-lg">
                         <span>Total</span>
-                        <span>${total.toLocaleString()}</span>
+                        <span>₹{finalTotal.toLocaleString()}</span>
                     </div>
                 </div>
                 <Button 
@@ -148,8 +227,11 @@ export default function CheckoutPage() {
                     disabled={isProcessing}
                     onClick={handleSubmit(onSubmit)}
                 >
-                    {isProcessing ? 'Processing...' : `Pay $${total.toLocaleString()}`}
+                    {isProcessing ? 'Placing Order...' : `Place Order — ₹${finalTotal.toLocaleString()}`}
                 </Button>
+                <p className="text-xs text-center text-muted-foreground mt-3">
+                  Final amount is calculated on the server. Prices cannot be manipulated.
+                </p>
             </div>
         </div>
       </div>

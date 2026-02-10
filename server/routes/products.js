@@ -196,7 +196,22 @@ router.get('/:id', asyncHandler(async (req, res) => {
 // @route   POST /api/products
 // @access  Private/Admin
 router.post('/', protect, authorize('admin'), asyncHandler(async (req, res) => {
-  const product = await Product.create(req.body);
+  // Whitelist allowed fields — prevents injection of unexpected fields
+  const allowedFields = [
+    'name', 'sku', 'price', 'originalPrice', 'category', 'categorySlug',
+    'material', 'materialId', 'purity', 'image', 'images', 'description',
+    'shortDescription', 'stock', 'isNewArrival', 'isBestSeller', 'isActive',
+    'weight', 'dimensions', 'diamondDetails', 'priceBreakdown', 'hallmark',
+    'certification', 'origin', 'occasions', 'idealFor', 'styleNote',
+    'returnPolicy', 'exchangePolicy', 'warranty', 'careInstructions'
+  ];
+
+  const sanitizedBody = {};
+  allowedFields.forEach(field => {
+    if (req.body[field] !== undefined) sanitizedBody[field] = req.body[field];
+  });
+
+  const product = await Product.create(sanitizedBody);
 
   res.status(201).json({
     success: true,
