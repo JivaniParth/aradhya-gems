@@ -158,14 +158,15 @@ export default function Navbar() {
               </Link>
 
               {/* Desktop Account */}
-              <div className="hidden md:block">
+              <div className="hidden md:block relative z-50">
                 {isAuthenticated ? (
                   <Link
                     to="/account"
-                    className="p-2 hover:bg-gray-50 rounded-full"
+                    className="p-2 hover:bg-gray-100 rounded-full inline-flex items-center justify-center transition-colors"
                     aria-label="Account"
+                    title={user?.firstName ? `${user.firstName}'s Account` : 'My Account'}
                   >
-                    <User className="w-5 h-5 text-secondary" />
+                    <User className="w-5 h-5 text-secondary hover:text-primary transition-colors" />
                   </Link>
                 ) : (
                   <Link

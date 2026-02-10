@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import ProductCard from '../components/shop/ProductCard';
 import { WhyBuyFromUs, TrustStrip } from '../components/common/TrustComponents';
+import HeroCarousel from '../components/common/HeroCarousel';
 import { 
   getNewArrivals, 
   getBestSellers, 
@@ -294,8 +295,8 @@ export default function HomePage() {
       {/* Trust Strip - Above the fold */}
       <TrustStrip />
       
-      {/* Compact Hero - Functional, not theatrical */}
-      <CompactHero />
+      {/* Hero Carousel - Dynamic sliding banner */}
+      <HeroCarousel />
       
       {/* New Arrivals - For repeat users */}
       <ProductCarousel

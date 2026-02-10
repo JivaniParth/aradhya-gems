@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { 
   DollarSign, 
   ShoppingBag, 
@@ -7,7 +7,8 @@ import {
   Users,
   TrendingUp,
   TrendingDown,
-  ArrowRight
+  ArrowRight,
+  ArrowLeft
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
@@ -62,8 +63,19 @@ const statusColors = {
 };
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
+
   return (
     <div className="p-6 lg:p-8">
+      {/* Back Button */}
+      <button
+        onClick={() => navigate('/account')}
+        className="flex items-center gap-2 text-muted-foreground hover:text-primary mb-4 transition-colors group"
+      >
+        <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+        <span className="text-sm font-medium">Back to Profile</span>
+      </button>
+
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-serif font-bold text-secondary">Dashboard</h1>
