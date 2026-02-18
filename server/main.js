@@ -20,6 +20,7 @@ const orderRoutes = require('./routes/orders');
 const wishlistRoutes = require('./routes/wishlist');
 const adminRoutes = require('./routes/admin');
 const couponRoutes = require('./routes/coupons');
+const paymentRoutes = require('./routes/payments');
 
 // Initialize Express app
 const app = express();
@@ -92,6 +93,7 @@ app.use('/api/orders', orderLimiter, orderRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/coupons', couponRoutes);
+app.use('/api/payments', paymentRoutes);
 
 // ===================
 // ERROR HANDLING

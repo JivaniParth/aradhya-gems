@@ -13,6 +13,11 @@ const connectDB = require('./config/db');
 const User = require('./models/User');
 const Product = require('./models/Product');
 const Category = require('./models/Category');
+const Order = require('./models/Order');
+const Cart = require('./models/Cart');
+const Coupon = require('./models/Coupon');
+const Counter = require('./models/Counter');
+const Payment = require('./models/Payment');
 
 // Seed data
 const categories = [
@@ -322,6 +327,73 @@ const users = [
   }
 ];
 
+// Coupon seed data
+const coupons = [
+  {
+    code: 'WELCOME10',
+    description: 'Welcome offer - 10% off on your first purchase',
+    discountType: 'percentage',
+    discountValue: 10,
+    maxDiscount: 5000,
+    minOrderAmount: 10000,
+    usageLimit: 1000,
+    perUserLimit: 1,
+    validFrom: new Date('2026-01-01'),
+    validUntil: new Date('2026-12-31'),
+    isActive: true
+  },
+  {
+    code: 'FESTIVE2026',
+    description: 'Festival special - Flat ₹5000 off',
+    discountType: 'fixed',
+    discountValue: 5000,
+    minOrderAmount: 50000,
+    usageLimit: 500,
+    perUserLimit: 2,
+    validFrom: new Date('2026-01-01'),
+    validUntil: new Date('2026-12-31'),
+    isActive: true
+  },
+  {
+    code: 'DIAMOND15',
+    description: '15% off on diamond jewelry',
+    discountType: 'percentage',
+    discountValue: 15,
+    maxDiscount: 15000,
+    minOrderAmount: 75000,
+    usageLimit: 200,
+    perUserLimit: 1,
+    validFrom: new Date('2026-02-01'),
+    validUntil: new Date('2026-06-30'),
+    isActive: true
+  },
+  {
+    code: 'RUBY3000',
+    description: 'Flat ₹3000 off on ruby jewelry',
+    discountType: 'fixed',
+    discountValue: 3000,
+    minOrderAmount: 30000,
+    usageLimit: null, // unlimited
+    perUserLimit: 3,
+    validFrom: new Date('2026-01-01'),
+    validUntil: new Date('2026-12-31'),
+    isActive: true
+  },
+  {
+    code: 'PREMIUM20',
+    description: 'Premium members - 20% off',
+    discountType: 'percentage',
+    discountValue: 20,
+    maxDiscount: 25000,
+    minOrderAmount: 100000,
+    usageLimit: 100,
+    perUserLimit: 5,
+    validFrom: new Date('2026-01-01'),
+    validUntil: new Date('2026-12-31'),
+    isActive: true
+  }
+];
+
 // Seed function
 async function seedDatabase() {
   try {
@@ -336,7 +408,12 @@ async function seedDatabase() {
     await Promise.all([
       User.deleteMany({}),
       Product.deleteMany({}),
-      Category.deleteMany({})
+      Category.deleteMany({}),
+      Order.deleteMany({}),
+      Cart.deleteMany({}),
+      Coupon.deleteMany({}),
+      Counter.deleteMany({}),
+      Payment.deleteMany({})
     ]);
 
     // Seed categories
@@ -357,6 +434,161 @@ async function seedDatabase() {
     }
     console.log(`   ✅ ${users.length} users added`);
 
+    // Seed coupons
+    console.log('🎟️  Seeding coupons...');
+    await Coupon.insertMany(coupons);
+    console.log(`   ✅ ${coupons.length} coupons added`);
+
+    // Initialize counters
+    console.log('🔢 Initializing counters...');
+    await Counter.create({ name: 'order', seq: 0 });
+    console.log('   ✅ Order counter initialized');
+
+    // Create sample cart for customer
+    const customer = await User.findOne({ email: 'customer@example.com' });
+    const sampleProducts = await Product.find().limit(2);
+    
+    if (customer && sampleProducts.length > 0) {
+      console.log('🛒 Creating sample cart...');
+      await Cart.create({
+        user: customer._id,
+        items: sampleProducts.map(product => ({
+          product: product._id,
+          quantity: 1,
+          price: product.price
+        }))
+      });
+      console.log('   ✅ Sample cart created');
+    }
+
+    // Create sample order for customer
+    if (customer && sampleProducts.length > 0) {
+      console.log('📦 Creating sample order...');
+      const orderItems = sampleProducts.map(product => ({
+        product: product._id,
+        name: product.name,
+        image: product.image,
+        price: product.price,
+        quantity: 1
+      }));
+      
+      const subtotal = orderItems.reduce((sum, item) => sum + item.price, 0);
+      const tax = Math.round(subtotal * 0.03);
+      const shippingCost = 500;
+      const total = subtotal + tax + shippingCost;
+
+      const sampleOrder = await Order.create({
+        user: customer._id,
+        items: orderItems,
+        shippingAddress: {
+          firstName: 'John',
+          lastName: 'Doe',
+          address: '123 Main Street',
+          city: 'Mumbai',
+          state: 'Maharashtra',
+          postalCode: '400001',
+          country: 'India',
+          phone: '+91 9876543210'
+        },
+        paymentMethod: 'card',
+        paymentStatus: 'paid',
+        subtotal: subtotal,
+        shippingCost: shippingCost,
+        tax: tax,
+        total: total,
+        status: 'confirmed'
+      });
+      console.log('   ✅ Sample order created');
+
+      // Create sample payment for the order
+      console.log('💳 Creating sample payment...');
+      const payment = await Payment.create({
+        transactionId: `TXN${Date.now()}`,
+        order: sampleOrder._id,
+        user: customer._id,
+        amount: total,
+        currency: 'INR',
+        paymentMethod: 'card',
+        paymentGateway: 'razorpay',
+        gatewayOrderId: `order_${Date.now()}`,
+        gatewayPaymentId: `pay_${Date.now()}`,
+        gatewaySignature: 'sample_signature_hash',
+        cardDetails: {
+          last4: '1234',
+          brand: 'Visa',
+          network: 'VISA',
+          cardType: 'credit',
+          issuer: 'HDFC Bank'
+        },
+        status: 'success',
+        billingAddress: {
+          firstName: 'John',
+          lastName: 'Doe',
+          email: 'customer@example.com',
+          phone: '+91 9876543210',
+          address: '123 Main Street',
+          city: 'Mumbai',
+          state: 'Maharashtra',
+          postalCode: '400001',
+          country: 'India'
+        },
+        customerEmail: 'customer@example.com',
+        customerPhone: '+91 9876543210',
+        customerIP: '103.123.45.67',
+        fees: {
+          gatewayFee: Math.round(total * 0.02),
+          tax: Math.round(total * 0.02 * 0.18),
+          netAmount: total - Math.round(total * 0.02) - Math.round(total * 0.02 * 0.18)
+        },
+        initiatedAt: new Date(Date.now() - 2 * 60 * 1000), // 2 minutes ago
+        authorizedAt: new Date(Date.now() - 1 * 60 * 1000), // 1 minute ago
+        capturedAt: new Date(),
+        completedAt: new Date(),
+        description: `Payment for Order ${sampleOrder.orderId}`,
+        riskScore: 15,
+        fraudCheck: {
+          isPassed: true,
+          provider: 'Razorpay Shield',
+          details: { score: 15, status: 'low_risk' }
+        }
+      });
+      console.log('   ✅ Sample payment created');
+    }
+    
+    // Create additional sample payments (failed and refund examples)
+    if (customer && sampleProducts.length > 1) {
+      console.log('💳 Creating additional payment examples...');
+      
+      // Failed payment example
+      await Payment.create({
+        transactionId: `TXN${Date.now() + 1}`,
+        order: null,
+        user: customer._id,
+        amount: 25000,
+        currency: 'INR',
+        paymentMethod: 'upi',
+        paymentGateway: 'razorpay',
+        upiDetails: {
+          vpa: 'customer@paytm',
+          transactionId: 'UPI' + Date.now()
+        },
+        status: 'failed',
+        attempts: [{
+          attemptedAt: new Date(),
+          status: 'failed',
+          errorCode: 'INSUFFICIENT_FUNDS',
+          errorMessage: 'Insufficient funds in UPI account'
+        }],
+        customerEmail: 'customer@example.com',
+        customerPhone: '+91 9876543210',
+        initiatedAt: new Date(Date.now() - 5 * 60 * 1000),
+        failedAt: new Date(Date.now() - 4 * 60 * 1000),
+        description: 'Failed UPI payment attempt'
+      });
+      
+      console.log('   ✅ Additional payment examples created');
+    }
+
     console.log('');
     console.log('╔════════════════════════════════════════════════╗');
     console.log('║     ✅ DATABASE SEEDED SUCCESSFULLY!           ║');
@@ -364,6 +596,11 @@ async function seedDatabase() {
     console.log('║  Test Accounts:                                ║');
     console.log('║  Admin:    admin@aradhyagems.com / admin123    ║');
     console.log('║  Customer: customer@example.com / customer123  ║');
+    console.log('╠════════════════════════════════════════════════╣');
+    console.log('║  Collections Created (8):                      ║');
+    console.log('║  ✓ users, products, categories                 ║');
+    console.log('║  ✓ orders, carts, coupons                      ║');
+    console.log('║  ✓ counters, payments                          ║');
     console.log('╚════════════════════════════════════════════════╝');
     console.log('');
 

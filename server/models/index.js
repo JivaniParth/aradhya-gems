@@ -1,13 +1,19 @@
-const User = require('./models/User');
-const Product = require('./models/Product');
-const Order = require('./models/Order');
-const Cart = require('./models/Cart');
-const Category = require('./models/Category');
+const User = require('./User');
+const Product = require('./Product');
+const Order = require('./Order');
+const Cart = require('./Cart');
+const Category = require('./Category');
+const Coupon = require('./Coupon');
+const Counter = require('./Counter');
+const Payment = require('./Payment');
 
 module.exports = {
   User,
   Product,
   Order,
   Cart,
-  Category
+  Category,
+  Coupon,
+  Counter,
+  Payment
 };
