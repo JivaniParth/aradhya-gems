@@ -21,8 +21,8 @@ const Payment = require('./models/Payment');
 
 // Seed data
 const categories = [
-  { 
-    name: 'Necklaces', 
+  {
+    name: 'Necklaces',
     slug: 'necklaces',
     description: 'Timeless necklaces crafted for everyday elegance and special occasions',
     whyExists: 'From minimal everyday chains to statement pendants, find pieces that complement your neckline and style.',
@@ -31,8 +31,8 @@ const categories = [
     seoDescription: 'Shop authentic gold and diamond necklaces with certified purity.',
     sortOrder: 1
   },
-  { 
-    name: 'Earrings', 
+  {
+    name: 'Earrings',
     slug: 'earrings',
     description: 'Elegant earrings from subtle studs to statement drops',
     whyExists: 'Whether you prefer understated studs for daily wear or eye-catching drops for celebrations.',
@@ -41,8 +41,8 @@ const categories = [
     seoDescription: 'Discover certified diamond and gold earrings.',
     sortOrder: 2
   },
-  { 
-    name: 'Rings', 
+  {
+    name: 'Rings',
     slug: 'rings',
     description: 'Rings that mark moments—from daily wear to forever promises',
     whyExists: 'Find rings for every finger and every occasion.',
@@ -51,8 +51,8 @@ const categories = [
     seoDescription: 'Shop engagement rings, daily wear bands, and statement rings.',
     sortOrder: 3
   },
-  { 
-    name: 'Bracelets', 
+  {
+    name: 'Bracelets',
     slug: 'bracelets',
     description: 'Bracelets & bangles that add grace to every gesture',
     whyExists: 'From delicate chains to bold bangles, adorn your wrist with pieces that move with you.',
@@ -74,10 +74,9 @@ const products = [
     material: 'Gold',
     materialId: 'gold-18k',
     purity: '18K (75% pure gold)',
-    image: 'https://images.unsplash.com/photo-1599643478518-17488fbbcd75?q=80&w=800&auto=format&fit=crop',
-    images: [
-      'https://images.unsplash.com/photo-1599643478518-17488fbbcd75?q=80&w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=800&auto=format&fit=crop',
+    media: [
+      { url: 'https://images.unsplash.com/photo-1599643478518-17488fbbcd75?q=80&w=800&auto=format&fit=crop', type: 'image', isPrimary: true, sortOrder: 0 },
+      { url: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=800&auto=format&fit=crop', type: 'image', isPrimary: false, sortOrder: 1 },
     ],
     description: 'A timeless piece crafted from 18K gold, perfect for any occasion. This exquisite necklace features a delicate chain with a subtle pendant that catches the light beautifully.',
     shortDescription: 'Delicate 18K gold chain with subtle pendant',
@@ -105,8 +104,9 @@ const products = [
     material: 'White Gold',
     materialId: 'gold-18k',
     purity: '18K White Gold',
-    image: 'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?q=80&w=800&auto=format&fit=crop',
-    images: ['https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?q=80&w=800&auto=format&fit=crop'],
+    media: [
+      { url: 'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?q=80&w=800&auto=format&fit=crop', type: 'image', isPrimary: true, sortOrder: 0 },
+    ],
     description: 'Elegant drop earrings featuring deep blue sapphires set in 18K white gold. The sapphires are ethically sourced from Sri Lanka.',
     shortDescription: 'Blue sapphire drops in 18K white gold',
     stock: 8,
@@ -133,8 +133,9 @@ const products = [
     material: 'Platinum',
     materialId: 'platinum',
     purity: '950 Platinum',
-    image: 'https://images.unsplash.com/photo-1605100804763-ebea240d16be?q=80&w=800&auto=format&fit=crop',
-    images: ['https://images.unsplash.com/photo-1605100804763-ebea240d16be?q=80&w=800&auto=format&fit=crop'],
+    media: [
+      { url: 'https://images.unsplash.com/photo-1605100804763-ebea240d16be?q=80&w=800&auto=format&fit=crop', type: 'image', isPrimary: true, sortOrder: 0 },
+    ],
     description: 'A stunning 0.5 carat brilliant-cut diamond set in platinum. VVS1 clarity with excellent cut grade.',
     shortDescription: '0.5ct VVS1 diamond in platinum setting',
     stock: 3,
@@ -162,8 +163,9 @@ const products = [
     material: 'Gold',
     materialId: 'gold-18k',
     purity: '18K (75% pure gold)',
-    image: 'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?q=80&w=800&auto=format&fit=crop',
-    images: ['https://images.unsplash.com/photo-1611591437281-460bfbe1220a?q=80&w=800&auto=format&fit=crop'],
+    media: [
+      { url: 'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?q=80&w=800&auto=format&fit=crop', type: 'image', isPrimary: true, sortOrder: 0 },
+    ],
     description: 'A delicate yet durable gold chain bracelet designed for everyday elegance.',
     shortDescription: 'Minimal 18K gold chain for daily wear',
     stock: 20,
@@ -190,8 +192,9 @@ const products = [
     material: 'Rose Gold',
     materialId: 'rose-gold',
     purity: '18K Rose Gold',
-    image: 'https://images.unsplash.com/photo-1600720612662-79354784db4a?q=80&w=800&auto=format&fit=crop',
-    images: ['https://images.unsplash.com/photo-1600720612662-79354784db4a?q=80&w=800&auto=format&fit=crop'],
+    media: [
+      { url: 'https://images.unsplash.com/photo-1600720612662-79354784db4a?q=80&w=800&auto=format&fit=crop', type: 'image', isPrimary: true, sortOrder: 0 },
+    ],
     description: 'A captivating natural ruby in heart shape, surrounded by small diamonds, set in romantic rose gold.',
     shortDescription: 'Burmese ruby heart in rose gold with diamonds',
     stock: 5,
@@ -218,8 +221,9 @@ const products = [
     material: 'Gold',
     materialId: 'gold-18k',
     purity: '18K Gold with Freshwater Pearls',
-    image: 'https://images.unsplash.com/photo-1617038260897-41a1f14a8ca0?q=80&w=800&auto=format&fit=crop',
-    images: ['https://images.unsplash.com/photo-1617038260897-41a1f14a8ca0?q=80&w=800&auto=format&fit=crop'],
+    media: [
+      { url: 'https://images.unsplash.com/photo-1617038260897-41a1f14a8ca0?q=80&w=800&auto=format&fit=crop', type: 'image', isPrimary: true, sortOrder: 0 },
+    ],
     description: 'Timeless freshwater pearl studs in 18K gold settings. 8mm AAA-grade pearls.',
     shortDescription: 'Classic 8mm freshwater pearl studs',
     stock: 35,
@@ -246,8 +250,9 @@ const products = [
     material: 'White Gold',
     materialId: 'gold-18k',
     purity: '18K White Gold',
-    image: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=800&auto=format&fit=crop',
-    images: ['https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=800&auto=format&fit=crop'],
+    media: [
+      { url: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=800&auto=format&fit=crop', type: 'image', isPrimary: true, sortOrder: 0 },
+    ],
     description: 'An iconic diamond tennis bracelet featuring 3 carats of VS clarity diamonds in 18K white gold.',
     shortDescription: '3ct diamond line bracelet in white gold',
     stock: 2,
@@ -275,8 +280,9 @@ const products = [
     material: 'Gold',
     materialId: 'gold-18k',
     purity: '18K (75% pure gold)',
-    image: 'https://images.unsplash.com/photo-1630019852942-f89202989a59?q=80&w=800&auto=format&fit=crop',
-    images: ['https://images.unsplash.com/photo-1630019852942-f89202989a59?q=80&w=800&auto=format&fit=crop'],
+    media: [
+      { url: 'https://images.unsplash.com/photo-1630019852942-f89202989a59?q=80&w=800&auto=format&fit=crop', type: 'image', isPrimary: true, sortOrder: 0 },
+    ],
     description: 'Medium-sized gold hoops with a modern squared profile. Lightweight and comfortable.',
     shortDescription: 'Modern 18K gold hoops for everyday',
     stock: 18,
@@ -447,7 +453,7 @@ async function seedDatabase() {
     // Create sample cart for customer
     const customer = await User.findOne({ email: 'customer@example.com' });
     const sampleProducts = await Product.find().limit(2);
-    
+
     if (customer && sampleProducts.length > 0) {
       console.log('🛒 Creating sample cart...');
       await Cart.create({
@@ -467,11 +473,11 @@ async function seedDatabase() {
       const orderItems = sampleProducts.map(product => ({
         product: product._id,
         name: product.name,
-        image: product.image,
+        image: product.toObject({ virtuals: true }).image,
         price: product.price,
         quantity: 1
       }));
-      
+
       const subtotal = orderItems.reduce((sum, item) => sum + item.price, 0);
       const tax = Math.round(subtotal * 0.03);
       const shippingCost = 500;
@@ -554,11 +560,11 @@ async function seedDatabase() {
       });
       console.log('   ✅ Sample payment created');
     }
-    
+
     // Create additional sample payments (failed and refund examples)
     if (customer && sampleProducts.length > 1) {
       console.log('💳 Creating additional payment examples...');
-      
+
       // Failed payment example
       await Payment.create({
         transactionId: `TXN${Date.now() + 1}`,
@@ -585,7 +591,7 @@ async function seedDatabase() {
         failedAt: new Date(Date.now() - 4 * 60 * 1000),
         description: 'Failed UPI payment attempt'
       });
-      
+
       console.log('   ✅ Additional payment examples created');
     }
 

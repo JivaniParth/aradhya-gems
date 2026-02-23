@@ -140,13 +140,13 @@ router.get('/featured', asyncHandler(async (req, res) => {
 // @access  Public
 router.get('/categories', asyncHandler(async (req, res) => {
   const categories = await Category.find({ isActive: true }).sort({ sortOrder: 1 });
-  
+
   // Get product counts for each category
   const categoriesWithCounts = await Promise.all(
     categories.map(async (cat) => {
-      const count = await Product.countDocuments({ 
-        categorySlug: cat.slug, 
-        isActive: true 
+      const count = await Product.countDocuments({
+        categorySlug: cat.slug,
+        isActive: true
       });
       return {
         ...cat.toObject(),
@@ -199,7 +199,7 @@ router.post('/', protect, authorize('admin'), asyncHandler(async (req, res) => {
   // Whitelist allowed fields — prevents injection of unexpected fields
   const allowedFields = [
     'name', 'sku', 'price', 'originalPrice', 'category', 'categorySlug',
-    'material', 'materialId', 'purity', 'image', 'images', 'description',
+    'material', 'materialId', 'purity', 'media', 'variants', 'description',
     'shortDescription', 'stock', 'isNewArrival', 'isBestSeller', 'isActive',
     'weight', 'dimensions', 'diamondDetails', 'priceBreakdown', 'hallmark',
     'certification', 'origin', 'occasions', 'idealFor', 'styleNote',
@@ -273,7 +273,7 @@ router.delete('/:id', protect, authorize('admin'), asyncHandler(async (req, res)
 // @access  Private/Admin
 router.get('/admin/all', protect, authorize('admin'), asyncHandler(async (req, res) => {
   const { page = 1, limit = 20 } = req.query;
-  
+
   const pageNum = parseInt(page);
   const limitNum = parseInt(limit);
   const skip = (pageNum - 1) * limitNum;

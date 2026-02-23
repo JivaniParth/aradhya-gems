@@ -1,5 +1,77 @@
 const mongoose = require('mongoose');
 
+// ============================================
+// MEDIA SUB-SCHEMA (reusable for product + variants)
+// ============================================
+const mediaSchema = new mongoose.Schema({
+  url: {
+    type: String,
+    required: [true, 'Media URL is required']
+  },
+  key: {
+    type: String   // S3 object key — needed for deletion
+  },
+  type: {
+    type: String,
+    enum: ['image', 'video'],
+    default: 'image'
+  },
+  isPrimary: {
+    type: Boolean,
+    default: false
+  },
+  alt: String,
+  sortOrder: {
+    type: Number,
+    default: 0
+  }
+}, { _id: true });
+
+// ============================================
+// VARIANT SUB-SCHEMA (e.g., Rose Gold / White Gold)
+// ============================================
+const variantSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: [true, 'Variant name is required'],
+    trim: true
+  },
+  slug: {
+    type: String,
+    required: [true, 'Variant slug is required'],
+    lowercase: true,
+    trim: true
+  },
+  sku: {
+    type: String,
+    trim: true
+  },
+  price: {
+    type: Number,
+    min: [0, 'Price cannot be negative']
+  },
+  originalPrice: {
+    type: Number,
+    min: [0, 'Original price cannot be negative']
+  },
+  stock: {
+    type: Number,
+    min: [0, 'Stock cannot be negative'],
+    default: 0
+  },
+  material: String,
+  materialId: String,
+  purity: String,
+  media: [mediaSchema],
+  isActive: {
+    type: Boolean,
+    default: true
+  }
+}, { _id: true });
+
+// ============================================
+// MAIN PRODUCT SCHEMA
+// ============================================
 const productSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -41,11 +113,13 @@ const productSchema = new mongoose.Schema({
     required: true
   },
   purity: String,
-  image: {
-    type: String,
-    required: [true, 'Product image is required']
-  },
-  images: [String],
+
+  // ---- MEDIA (replaces old image/images fields) ----
+  media: [mediaSchema],
+
+  // ---- VARIANTS (for color / material options) ----
+  variants: [variantSchema],
+
   description: {
     type: String,
     required: [true, 'Product description is required'],
@@ -118,10 +192,35 @@ const productSchema = new mongoose.Schema({
   warranty: { type: String, default: 'Lifetime manufacturing warranty' },
   careInstructions: [String]
 }, {
-  timestamps: true
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
 
-// Create indexes for better search performance
+// ============================================
+// VIRTUAL: backward-compatible `image` getter
+// Returns the primary media URL or the first image URL
+// ============================================
+productSchema.virtual('image').get(function () {
+  if (!this.media || this.media.length === 0) return '';
+  const primary = this.media.find(m => m.isPrimary && m.type === 'image');
+  if (primary) return primary.url;
+  const firstImage = this.media.find(m => m.type === 'image');
+  return firstImage ? firstImage.url : this.media[0].url;
+});
+
+// Virtual: backward-compatible `images` getter (array of image URLs)
+productSchema.virtual('images').get(function () {
+  if (!this.media || this.media.length === 0) return [];
+  return this.media
+    .filter(m => m.type === 'image')
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map(m => m.url);
+});
+
+// ============================================
+// INDEXES
+// ============================================
 productSchema.index({ name: 'text', description: 'text', category: 'text' });
 productSchema.index({ category: 1 });
 productSchema.index({ categorySlug: 1 });
