@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
   Heart, 
@@ -15,15 +15,15 @@ import {
   Award,
   Info,
   ChevronDown,
-  Star
+  Star,
+  Loader2
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { productAPI } from '../services/api';
 import { 
-  getProductById, 
-  getRelatedProducts, 
   formatPrice,
   materials as allMaterials
-} from '../data/products';
+} from '../data/constants';
 import { useCartStore } from '../store/useCartStore';
 import { useWishlistStore } from '../store/useWishlistStore';
 import ProductCard from '../components/shop/ProductCard';
@@ -130,13 +130,46 @@ function CollapsibleSection({ title, children, defaultOpen = false }) {
 // ========================================
 export default function ProductDetailsPage() {
   const { id } = useParams();
-  const product = getProductById(id);
   const { addItem } = useCartStore();
   const { isInWishlist, toggleItem } = useWishlistStore();
   const [quantity, setQuantity] = useState(1);
   const [showPriceBreakdown, setShowPriceBreakdown] = useState(false);
 
-  if (!product) {
+  // API state
+  const [product, setProduct] = useState(null);
+  const [relatedProducts, setRelatedProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchProduct = async () => {
+      setLoading(true);
+      setError(null);
+      setQuantity(1);
+      try {
+        const { data } = await productAPI.getById(id);
+        setProduct(data.data.product);
+        setRelatedProducts(data.data.relatedProducts || []);
+      } catch (err) {
+        console.error('Failed to fetch product:', err);
+        setError('Product not found');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProduct();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-20 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error || !product) {
     return (
       <div className="container mx-auto px-4 py-20 text-center">
         <h2 className="text-2xl font-serif mb-4">Product not found</h2>
@@ -147,10 +180,14 @@ export default function ProductDetailsPage() {
     );
   }
 
-  const images = product.images?.length > 0 ? product.images : [product.image];
-  const relatedProducts = getRelatedProducts(product, 4);
-  const inWishlist = isInWishlist(product.id);
+  // Use virtual `images` getter or fallback to media array
+  const images = product.images?.length > 0 
+    ? product.images 
+    : (product.image ? [product.image] : []);
+  const productId = product._id || product.id;
+  const inWishlist = isInWishlist(productId);
   const materialInfo = allMaterials.find(m => m.id === product.materialId);
+  const isNew = product.isNewArrival || product.isNew;
 
   const handleAddToCart = () => {
     for (let i = 0; i < quantity; i++) {
@@ -195,7 +232,7 @@ export default function ProductDetailsPage() {
               <span className="text-sm text-primary font-medium uppercase tracking-wide">
                 {product.category}
               </span>
-              {product.isNew && (
+              {isNew && (
                 <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
                   New
                 </span>
@@ -415,7 +452,9 @@ export default function ProductDetailsPage() {
 
               <CollapsibleSection title="Dimensions & Specifications">
                 <div className="space-y-2 text-sm">
-                  {product.dimensions && Object.entries(product.dimensions).map(([key, value]) => (
+                  {product.dimensions && Object.entries(
+                    product.dimensions instanceof Map ? Object.fromEntries(product.dimensions) : product.dimensions
+                  ).map(([key, value]) => (
                     <div key={key} className="flex justify-between">
                       <span className="text-muted-foreground capitalize">
                         {key.replace(/([A-Z])/g, ' $1').trim()}
@@ -489,8 +528,8 @@ export default function ProductDetailsPage() {
               You May Also Like
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-              {relatedProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
+              {relatedProducts.map((rp) => (
+                <ProductCard key={rp._id} product={rp} />
               ))}
             </div>
           </section>

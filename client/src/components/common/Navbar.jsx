@@ -9,13 +9,15 @@ import {
   User, 
   LogOut, 
   ChevronRight,
-  Settings
+  Settings,
+  Loader2
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useCartStore } from '../../store/useCartStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useWishlistStore } from '../../store/useWishlistStore';
-import { products, categories, occasions } from '../../data/products';
+import { productAPI } from '../../services/api';
+import { categories, occasions } from '../../data/constants';
 
 export default function Navbar() {
   const { items } = useCartStore();
@@ -27,7 +29,9 @@ export default function Navbar() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
   const searchInputRef = useRef(null);
+  const debounceRef = useRef(null);
   
   const cartCount = items.reduce((acc, item) => acc + item.quantity, 0);
   const wishlistCount = wishlistItems.length;
@@ -39,20 +43,35 @@ export default function Navbar() {
     }
   }, [searchOpen]);
 
-  // Search products
+  // Search products via API with debounce
   useEffect(() => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      const results = products.filter(p => 
-        p.name.toLowerCase().includes(query) ||
-        p.category.toLowerCase().includes(query) ||
-        p.material.toLowerCase().includes(query) ||
-        (p.shortDescription && p.shortDescription.toLowerCase().includes(query))
-      ).slice(0, 5);
-      setSearchResults(results);
+      setSearchLoading(true);
+      debounceRef.current = setTimeout(async () => {
+        try {
+          const { data } = await productAPI.getAll({ search: searchQuery, limit: 5 });
+          setSearchResults(data.data.products);
+        } catch (err) {
+          console.error('Search failed:', err);
+          setSearchResults([]);
+        } finally {
+          setSearchLoading(false);
+        }
+      }, 300);
     } else {
       setSearchResults([]);
+      setSearchLoading(false);
     }
+
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
   }, [searchQuery]);
 
   // Close mobile menu on route change
@@ -79,6 +98,16 @@ export default function Navbar() {
     logout();
     setMobileMenuOpen(false);
     navigate('/');
+  };
+
+  // Get primary image for search result product
+  const getProductImage = (product) => {
+    if (product.image) return product.image;
+    if (product.media?.length > 0) {
+      const primary = product.media.find(m => m.isPrimary);
+      return primary?.url || product.media[0]?.url;
+    }
+    return '';
   };
 
   return (
@@ -404,18 +433,25 @@ export default function Navbar() {
                 </div>
               )}
 
+              {/* Search Loading */}
+              {searchLoading && searchQuery && (
+                <div className="mt-4 pt-4 border-t flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                </div>
+              )}
+
               {/* Search Results */}
-              {searchResults.length > 0 && (
+              {!searchLoading && searchResults.length > 0 && (
                 <div className="mt-4 border-t pt-4">
                   <div className="space-y-2">
                     {searchResults.map((product) => (
                       <button
-                        key={product.id}
-                        onClick={() => handleSearchSelect(product.id)}
+                        key={product._id}
+                        onClick={() => handleSearchSelect(product._id)}
                         className="w-full flex items-center gap-4 p-3 hover:bg-gray-50 rounded-lg text-left"
                       >
                         <img 
-                          src={product.image} 
+                          src={getProductImage(product)} 
                           alt={product.name}
                           className="w-14 h-14 object-cover rounded-lg"
                         />
@@ -438,7 +474,7 @@ export default function Navbar() {
                 </div>
               )}
 
-              {searchQuery && searchResults.length === 0 && (
+              {!searchLoading && searchQuery && searchResults.length === 0 && (
                 <div className="mt-4 pt-4 border-t text-center py-8">
                   <p className="text-muted-foreground">No results for "{searchQuery}"</p>
                   <p className="text-sm text-muted-foreground mt-1">Try a different search term</p>

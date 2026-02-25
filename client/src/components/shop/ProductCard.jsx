@@ -4,12 +4,13 @@ import { ShoppingBag, Heart, Star } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { useCartStore } from '../../store/useCartStore';
 import { useWishlistStore } from '../../store/useWishlistStore';
-import { formatPrice } from '../../data/products';
+import { formatPrice } from '../../data/constants';
 
 export default function ProductCard({ product, showQuickAdd = true }) {
   const { addItem } = useCartStore();
   const { isInWishlist, toggleItem } = useWishlistStore();
-  const inWishlist = isInWishlist(product.id);
+  const productId = product._id || product.id;
+  const inWishlist = isInWishlist(productId);
 
   const handleAddToCart = (e) => {
     e.preventDefault();
@@ -31,7 +32,7 @@ export default function ProductCard({ product, showQuickAdd = true }) {
     <div className="group relative bg-white rounded-lg overflow-hidden transition-all hover:shadow-lg border border-gray-100">
       {/* Image Container */}
       <div className="aspect-[4/5] overflow-hidden bg-gray-50 relative">
-        <Link to={`/product/${product.id}`}>
+        <Link to={`/product/${productId}`}>
           <img
             src={product.image}
             alt={product.name}
@@ -53,7 +54,7 @@ export default function ProductCard({ product, showQuickAdd = true }) {
 
         {/* Badges - Top Left */}
         <div className="absolute top-2 left-2 flex flex-col gap-1">
-          {product.isNew && (
+          {(product.isNewArrival || product.isNew) && (
             <span className="text-[10px] font-medium bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
               New
             </span>
@@ -119,7 +120,7 @@ export default function ProductCard({ product, showQuickAdd = true }) {
         </div>
 
         {/* Product Name */}
-        <Link to={`/product/${product.id}`}>
+        <Link to={`/product/${productId}`}>
           <h3 className="font-serif text-sm md:text-base font-medium text-secondary group-hover:text-primary transition-colors line-clamp-2 min-h-[2.5rem] md:min-h-[3rem]">
             {product.name}
           </h3>

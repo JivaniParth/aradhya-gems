@@ -1,26 +1,22 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowRight, Loader2 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import ProductCard from '../components/shop/ProductCard';
 import { WhyBuyFromUs, TrustStrip } from '../components/common/TrustComponents';
 import HeroCarousel from '../components/common/HeroCarousel';
+import { productAPI } from '../services/api';
 import { 
-  getNewArrivals, 
-  getBestSellers, 
   categories, 
-  occasions,
-  formatPrice 
-} from '../data/products';
+  occasions
+} from '../data/constants';
 
 // ========================================
 // CAROUSEL COMPONENT (Mobile-First with dots)
 // ========================================
-function ProductCarousel({ products, title, subtitle, viewAllLink }) {
+function ProductCarousel({ products, title, subtitle, viewAllLink, loading }) {
   const scrollRef = useRef(null);
   const [activeIndex, setActiveIndex] = useState(0);
-  const itemsPerView = 4; // Desktop
-  const totalPages = Math.ceil(products.length / itemsPerView);
 
   const scroll = (direction) => {
     const container = scrollRef.current;
@@ -52,60 +48,73 @@ function ProductCarousel({ products, title, subtitle, viewAllLink }) {
             <h2 className="text-2xl md:text-3xl font-serif font-bold text-secondary">{title}</h2>
             {subtitle && <p className="text-muted-foreground mt-1">{subtitle}</p>}
           </div>
-          <div className="hidden md:flex items-center gap-2">
-            <button 
-              onClick={() => scroll('left')}
-              className="p-2 rounded-full border border-gray-200 hover:border-primary hover:text-primary transition-colors"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <button 
-              onClick={() => scroll('right')}
-              className="p-2 rounded-full border border-gray-200 hover:border-primary hover:text-primary transition-colors"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </div>
+          {!loading && products.length > 0 && (
+            <div className="hidden md:flex items-center gap-2">
+              <button 
+                onClick={() => scroll('left')}
+                className="p-2 rounded-full border border-gray-200 hover:border-primary hover:text-primary transition-colors"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button 
+                onClick={() => scroll('right')}
+                className="p-2 rounded-full border border-gray-200 hover:border-primary hover:text-primary transition-colors"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+          )}
         </div>
+
+        {/* Loading */}
+        {loading && (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        )}
 
         {/* Carousel */}
-        <div 
-          ref={scrollRef}
-          onScroll={handleScroll}
-          className="flex gap-4 md:gap-6 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-4"
-          style={{ scrollSnapType: 'x mandatory' }}
-        >
-          {products.map((product) => (
+        {!loading && products.length > 0 && (
+          <>
             <div 
-              key={product.id}
-              className="flex-shrink-0 w-[70%] sm:w-[45%] md:w-[30%] lg:w-[23%] snap-start"
+              ref={scrollRef}
+              onScroll={handleScroll}
+              className="flex gap-4 md:gap-6 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-4"
+              style={{ scrollSnapType: 'x mandatory' }}
             >
-              <ProductCard product={product} />
+              {products.map((product) => (
+                <div 
+                  key={product._id}
+                  className="flex-shrink-0 w-[70%] sm:w-[45%] md:w-[30%] lg:w-[23%] snap-start"
+                >
+                  <ProductCard product={product} />
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
 
-        {/* Dot Indicators (Mobile) */}
-        <div className="flex justify-center gap-1.5 mt-4 md:hidden">
-          {products.slice(0, Math.min(products.length, 8)).map((_, index) => (
-            <button
-              key={index}
-              className={`w-2 h-2 rounded-full transition-colors ${
-                index === activeIndex ? 'bg-primary' : 'bg-gray-300'
-              }`}
-              onClick={() => {
-                const container = scrollRef.current;
-                if (!container) return;
-                const cardWidth = container.firstChild?.offsetWidth || 280;
-                const gap = 16;
-                container.scrollTo({ left: index * (cardWidth + gap), behavior: 'smooth' });
-              }}
-            />
-          ))}
-        </div>
+            {/* Dot Indicators (Mobile) */}
+            <div className="flex justify-center gap-1.5 mt-4 md:hidden">
+              {products.slice(0, Math.min(products.length, 8)).map((_, index) => (
+                <button
+                  key={index}
+                  className={`w-2 h-2 rounded-full transition-colors ${
+                    index === activeIndex ? 'bg-primary' : 'bg-gray-300'
+                  }`}
+                  onClick={() => {
+                    const container = scrollRef.current;
+                    if (!container) return;
+                    const cardWidth = container.firstChild?.offsetWidth || 280;
+                    const gap = 16;
+                    container.scrollTo({ left: index * (cardWidth + gap), behavior: 'smooth' });
+                  }}
+                />
+              ))}
+            </div>
+          </>
+        )}
 
         {/* View All Link */}
-        {viewAllLink && (
+        {viewAllLink && !loading && products.length > 0 && (
           <div className="text-center mt-8">
             <Link 
               to={viewAllLink}
@@ -242,53 +251,28 @@ function QuickActions() {
 }
 
 // ========================================
-// COMPACT HERO - Not theatrical, functional
-// ========================================
-function CompactHero() {
-  return (
-    <section className="relative bg-secondary text-white">
-      <div className="container mx-auto px-4 py-12 md:py-16">
-        <div className="max-w-xl">
-          <p className="text-primary font-medium text-sm mb-2">New Arrivals</p>
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-serif font-bold mb-4">
-            Timeless Elegance, Transparent Pricing
-          </h1>
-          <p className="text-gray-300 mb-6">
-            BIS Hallmarked gold. Certified diamonds. No hidden charges. 
-            Lifetime exchange guaranteed.
-          </p>
-          <div className="flex flex-wrap gap-3">
-            <Link to="/shop">
-              <Button size="lg">Shop New Arrivals</Button>
-            </Link>
-            <Link to="/shop?occasion=gifting">
-              <Button variant="outline" size="lg" className="text-white border-white hover:bg-white/10">
-                Gift Guide
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </div>
-      
-      {/* Decorative element */}
-      <div className="hidden lg:block absolute right-0 top-0 bottom-0 w-1/3">
-        <img
-          src="https://images.unsplash.com/photo-1599643478518-17488fbbcd75?q=80&w=600&auto=format&fit=crop"
-          alt=""
-          className="w-full h-full object-cover opacity-30"
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-secondary to-transparent" />
-      </div>
-    </section>
-  );
-}
-
-// ========================================
 // MAIN HOMEPAGE COMPONENT
 // ========================================
 export default function HomePage() {
-  const newArrivals = getNewArrivals();
-  const bestSellers = getBestSellers();
+  const [newArrivals, setNewArrivals] = useState([]);
+  const [bestSellers, setBestSellers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchFeatured = async () => {
+      try {
+        const { data } = await productAPI.getFeatured();
+        setNewArrivals(data.data.newArrivals || []);
+        setBestSellers(data.data.bestSellers || []);
+      } catch (err) {
+        console.error('Failed to fetch featured products:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFeatured();
+  }, []);
 
   return (
     <div className="flex flex-col">
@@ -304,6 +288,7 @@ export default function HomePage() {
         title="New Arrivals"
         subtitle="The latest additions to our collection"
         viewAllLink="/shop?sort=newest"
+        loading={loading}
       />
       
       {/* Occasion Navigation - Emotional path */}
@@ -318,6 +303,7 @@ export default function HomePage() {
         title="Best Sellers"
         subtitle="Most loved by our customers"
         viewAllLink="/shop?sort=popular"
+        loading={loading}
       />
       
       {/* Quick Actions - Decision shortcuts */}

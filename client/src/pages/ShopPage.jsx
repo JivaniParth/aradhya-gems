@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { 
   Filter, 
@@ -8,22 +8,22 @@ import {
   Grid3X3, 
   LayoutGrid,
   SlidersHorizontal,
-  Info
+  Info,
+  Loader2
 } from 'lucide-react';
 import ProductCard from '../components/shop/ProductCard';
 import { Button } from '../components/ui/Button';
 import { Checkbox } from '../components/ui/Checkbox';
 import { TrustStrip } from '../components/common/TrustComponents';
+import { productAPI } from '../services/api';
 import { 
-  products, 
   categories, 
   materials, 
   occasions,
   priceRanges,
-  filterProducts,
   getCategoryBySlug,
   formatPrice 
-} from '../data/products';
+} from '../data/constants';
 
 const SORT_OPTIONS = [
   { value: 'popular', label: 'Most Popular' },
@@ -32,6 +32,15 @@ const SORT_OPTIONS = [
   { value: 'price-desc', label: 'Price: High to Low' },
   { value: 'rating', label: 'Highest Rated' },
 ];
+
+// Map client sort values to server sort values
+const SORT_MAP = {
+  'popular': 'popularity',
+  'newest': undefined,  // default server sort is newest
+  'price-asc': 'price-low',
+  'price-desc': 'price-high',
+  'rating': 'rating',
+};
 
 // ========================================
 // CATEGORY HEADER - SEO & Context
@@ -159,6 +168,12 @@ export default function ShopPage() {
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [gridCols, setGridCols] = useState(3);
 
+  // API state
+  const [products, setProducts] = useState([]);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   // Get filter values from URL
   const selectedCategory = searchParams.get('category') || '';
   const selectedMaterial = searchParams.get('material') || '';
@@ -171,17 +186,36 @@ export default function ShopPage() {
   // Get category info
   const categoryInfo = selectedCategory ? getCategoryBySlug(selectedCategory) : null;
 
-  // Filter products
-  const filteredProducts = useMemo(() => {
-    return filterProducts({
-      category: selectedCategory,
-      material: selectedMaterial,
-      occasion: selectedOccasion,
-      minPrice: selectedMinPrice,
-      maxPrice: selectedMaxPrice,
-      search: searchQuery,
-      sortBy,
-    });
+  // Fetch products from API
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const params = { limit: 50 };
+        if (selectedCategory) params.category = selectedCategory;
+        if (selectedMaterial) params.material = selectedMaterial;
+        if (selectedOccasion) params.occasion = selectedOccasion;
+        if (selectedMinPrice) params.minPrice = selectedMinPrice;
+        if (selectedMaxPrice) params.maxPrice = selectedMaxPrice;
+        if (searchQuery) params.search = searchQuery;
+        if (sortBy && SORT_MAP[sortBy]) params.sort = SORT_MAP[sortBy];
+        if (sortBy === 'newest') params.sort = undefined;
+        // For 'popular', the server uses 'popularity'
+        // For 'newest', the server default sort (createdAt desc) is fine
+
+        const { data } = await productAPI.getAll(params);
+        setProducts(data.data.products);
+        setTotalProducts(data.data.pagination.total);
+      } catch (err) {
+        console.error('Failed to fetch products:', err);
+        setError('Failed to load products. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
   }, [selectedCategory, selectedMaterial, selectedOccasion, selectedMinPrice, selectedMaxPrice, searchQuery, sortBy]);
 
   // Update URL params
@@ -390,7 +424,7 @@ export default function ShopPage() {
             {/* Category Header */}
             <CategoryHeader 
               category={categoryInfo} 
-              totalProducts={filteredProducts.length} 
+              totalProducts={totalProducts} 
             />
 
             {/* Search Results */}
@@ -433,7 +467,7 @@ export default function ShopPage() {
                 </button>
 
                 <p className="text-sm text-muted-foreground hidden sm:block">
-                  {filteredProducts.length} {filteredProducts.length === 1 ? 'piece' : 'pieces'}
+                  {totalProducts} {totalProducts === 1 ? 'piece' : 'pieces'}
                 </p>
               </div>
 
@@ -469,18 +503,38 @@ export default function ShopPage() {
               </div>
             </div>
 
+            {/* Loading State */}
+            {loading && (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
+            )}
+
+            {/* Error State */}
+            {error && !loading && (
+              <div className="text-center py-16">
+                <p className="text-lg text-red-500 mb-2">{error}</p>
+                <Button variant="outline" onClick={() => window.location.reload()}>
+                  Try Again
+                </Button>
+              </div>
+            )}
+
             {/* Products Grid */}
-            {filteredProducts.length > 0 ? (
+            {!loading && !error && products.length > 0 && (
               <div className={`grid gap-4 md:gap-6 ${
                 gridCols === 2 
                   ? 'grid-cols-2 md:grid-cols-2 lg:grid-cols-2' 
                   : 'grid-cols-2 md:grid-cols-2 lg:grid-cols-3'
               }`}>
-                {filteredProducts.map((product) => (
-                  <ProductCard key={product.id} product={product} />
+                {products.map((product) => (
+                  <ProductCard key={product._id} product={product} />
                 ))}
               </div>
-            ) : (
+            )}
+
+            {/* Empty State */}
+            {!loading && !error && products.length === 0 && (
               <div className="text-center py-16">
                 <p className="text-lg text-secondary mb-2">No products found</p>
                 <p className="text-muted-foreground mb-4">
@@ -530,7 +584,7 @@ export default function ShopPage() {
                 className="flex-1"
                 onClick={() => setMobileFiltersOpen(false)}
               >
-                Show {filteredProducts.length} Results
+                Show {totalProducts} Results
               </Button>
             </div>
           </div>

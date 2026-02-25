@@ -4,25 +4,24 @@ import { Heart, Trash2, ShoppingBag, ArrowRight } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useWishlistStore } from '../store/useWishlistStore';
 import { useCartStore } from '../store/useCartStore';
-import { getProductById, formatPrice } from '../data/products';
+import { formatPrice } from '../data/constants';
 
 export default function WishlistPage() {
   const { items, removeItem, clearWishlist } = useWishlistStore();
   const { addItem: addToCart } = useCartStore();
 
   const handleAddToCart = (item) => {
-    const product = getProductById(item.id);
-    if (product && product.stock > 0) {
-      addToCart(product);
-      removeItem(item.id);
+    // Wishlist items already have product data stored
+    if (item && item.stock > 0) {
+      addToCart(item);
+      removeItem(item.id || item._id);
     }
   };
 
   const handleAddAllToCart = () => {
     items.forEach((item) => {
-      const product = getProductById(item.id);
-      if (product && product.stock > 0) {
-        addToCart(product);
+      if (item && item.stock > 0) {
+        addToCart(item);
       }
     });
     clearWishlist();
@@ -79,13 +78,13 @@ export default function WishlistPage() {
       {/* Wishlist Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {items.map((item) => {
-          const product = getProductById(item.id);
-          const isInStock = product && product.stock > 0;
+          const itemId = item._id || item.id;
+          const isInStock = item.stock > 0;
 
           return (
-            <div key={item.id} className="bg-white rounded-lg border border-gray-100 overflow-hidden group">
+            <div key={itemId} className="bg-white rounded-lg border border-gray-100 overflow-hidden group">
               {/* Image */}
-              <Link to={`/product/${item.id}`} className="block">
+              <Link to={`/product/${itemId}`} className="block">
                 <div className="aspect-square bg-gray-50 relative overflow-hidden">
                   <img
                     src={item.image}
@@ -107,7 +106,7 @@ export default function WishlistPage() {
                 <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
                   {item.category}
                 </p>
-                <Link to={`/product/${item.id}`}>
+                <Link to={`/product/${itemId}`}>
                   <h3 className="font-serif font-medium text-secondary group-hover:text-primary transition-colors line-clamp-2">
                     {item.name}
                   </h3>
@@ -135,7 +134,7 @@ export default function WishlistPage() {
                     {isInStock ? 'Add to Cart' : 'Unavailable'}
                   </Button>
                   <button
-                    onClick={() => removeItem(item.id)}
+                    onClick={() => removeItem(itemId)}
                     className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-red-200 hover:text-red-500 transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
