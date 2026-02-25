@@ -3,7 +3,7 @@ import { cartAPI, couponAPI } from '../services/api';
 
 export const useCartStore = create((set, get) => ({
   items: [],
-  pricing: { subtotal: 0, shippingCost: 0, tax: 0, total: 0 },
+  pricing: { subtotal: 0, shippingCost: 0, tax: 0, gstBreakdown: { materialGST: 0, makingGST: 0 }, total: 0, itemCount: 0 },
   coupon: null, // { code, discount, description }
   isOpen: false,
   isLoading: false,
@@ -18,7 +18,8 @@ export const useCartStore = create((set, get) => ({
       const { data } = await cartAPI.get();
       const cart = data.data.cart;
       const pricing = data.data.pricing || {
-        subtotal: 0, shippingCost: 0, tax: 0, total: 0
+        subtotal: 0, shippingCost: 0, tax: 0,
+        gstBreakdown: { materialGST: 0, makingGST: 0 }, total: 0, itemCount: 0
       };
       set({
         items: cart.items || [],
@@ -97,7 +98,7 @@ export const useCartStore = create((set, get) => ({
     } catch (e) { /* ignore */ }
     set({
       items: [],
-      pricing: { subtotal: 0, shippingCost: 0, tax: 0, total: 0 },
+      pricing: { subtotal: 0, shippingCost: 0, tax: 0, gstBreakdown: { materialGST: 0, makingGST: 0 }, total: 0, itemCount: 0 },
       coupon: null
     });
   },

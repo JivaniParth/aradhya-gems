@@ -6,12 +6,14 @@ import { z } from 'zod';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { PasswordStrengthMeter } from '../../components/ui/PasswordStrengthMeter';
 import { useAuthStore } from '../../store/useAuthStore';
 
 const registerSchema = z.object({
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
   lastName: z.string().min(2, 'Last name must be at least 2 characters'),
   email: z.string().email('Please enter a valid email address'),
+  phone: z.string().optional(),
   password: z.string()
     .min(8, 'Password must be at least 8 characters')
     .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
@@ -32,12 +34,12 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const { register, handleSubmit, formState: { errors } } = useForm({
+  const { register, handleSubmit, watch, formState: { errors } } = useForm({
     resolver: zodResolver(registerSchema),
-    defaultValues: {
-      acceptTerms: false,
-    },
+    defaultValues: { acceptTerms: false },
   });
+
+  const password = watch('password', '');
 
   const onSubmit = async (data) => {
     clearError();
@@ -46,6 +48,7 @@ export default function RegisterPage() {
       lastName: data.lastName,
       email: data.email,
       password: data.password,
+      phone: data.phone || undefined,
     });
     
     if (result.success) {
@@ -56,7 +59,6 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-accent/30 px-4 py-12">
       <div className="w-full max-w-md">
-        {/* Logo */}
         <div className="text-center mb-8">
           <Link to="/" className="text-3xl font-serif font-bold text-primary">
             Aradhya Gems
@@ -64,7 +66,6 @@ export default function RegisterPage() {
           <p className="text-gray-500 mt-2">Create your account to get started.</p>
         </div>
 
-        {/* Register Form */}
         <div className="bg-white rounded-xl shadow-lg p-8">
           <h1 className="text-2xl font-serif font-bold text-secondary mb-6">Create Account</h1>
 
@@ -98,6 +99,14 @@ export default function RegisterPage() {
               {...register('email')}
             />
 
+            <Input
+              label="Phone Number (Optional)"
+              type="tel"
+              placeholder="+91 98765 43210"
+              error={errors.phone?.message}
+              {...register('phone')}
+            />
+
             <div className="relative">
               <Input
                 label="Password"
@@ -113,6 +122,7 @@ export default function RegisterPage() {
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
+              <PasswordStrengthMeter password={password} />
             </div>
 
             <div className="relative">
@@ -156,10 +166,7 @@ export default function RegisterPage() {
 
             <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
               {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Creating account...
-                </>
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Creating account...</>
               ) : (
                 'Create Account'
               )}

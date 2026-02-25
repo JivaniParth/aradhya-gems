@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const Order = require('../models/Order');
 const Product = require('../models/Product');
@@ -8,6 +9,14 @@ const { asyncHandler } = require('../middleware/error');
 
 // All routes require admin access
 router.use(protect, authorize('admin'));
+
+const handleValidationErrors = (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ success: false, errors: errors.array() });
+  }
+  next();
+};
 
 // @desc    Get dashboard stats
 // @route   GET /api/admin/stats
@@ -24,13 +33,24 @@ router.get('/stats', asyncHandler(async (req, res) => {
     Order.countDocuments(),
     Order.aggregate([
       { $match: { paymentStatus: 'paid', status: { $nin: ['cancelled', 'returned'] } } },
-      { $group: { _id: null, totalRevenue: { $sum: '$total' }, totalTax: { $sum: '$tax' }, totalShipping: { $sum: '$shippingCost' }, totalDiscount: { $sum: '$discount' } } }
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: '$total' },
+          totalTax: { $sum: '$tax' },
+          totalShipping: { $sum: '$shippingCost' },
+          totalDiscount: { $sum: '$discount' },
+          // India GST breakdown
+          totalMaterialGST: { $sum: '$taxBreakdown.materialGST' },
+          totalMakingGST: { $sum: '$taxBreakdown.makingGST' }
+        }
+      }
     ])
   ]);
 
   // Orders by status
   const ordersByStatus = await Order.aggregate([
-    { $group: { _id: '$status', count: { $sum: 1 } } }
+    { $group: { _id: '$status', count: { $sum: 1 }, totalAmount: { $sum: '$total' } } }
   ]);
 
   // Recent orders
@@ -63,11 +83,14 @@ router.get('/stats', asyncHandler(async (req, res) => {
           month: { $month: '$createdAt' }
         },
         revenue: { $sum: '$total' },
+        tax: { $sum: '$tax' },
         orders: { $sum: 1 }
       }
     },
     { $sort: { '_id.year': 1, '_id.month': 1 } }
   ]);
+
+  const rev = revenueData[0] || {};
 
   res.json({
     success: true,
@@ -76,7 +99,14 @@ router.get('/stats', asyncHandler(async (req, res) => {
         totalUsers,
         totalProducts,
         totalOrders,
-        totalRevenue: revenueData[0]?.totalRevenue || 0
+        totalRevenue: rev.totalRevenue || 0,
+        totalTax: rev.totalTax || 0,
+        totalShipping: rev.totalShipping || 0,
+        totalDiscount: rev.totalDiscount || 0,
+        gstBreakdown: {
+          materialGST: rev.totalMaterialGST || 0,
+          makingGST: rev.totalMakingGST || 0
+        }
       },
       ordersByStatus,
       recentOrders,
@@ -91,7 +121,7 @@ router.get('/stats', asyncHandler(async (req, res) => {
 // @access  Private/Admin
 router.get('/users', asyncHandler(async (req, res) => {
   const { role, search, page = 1, limit = 20 } = req.query;
-  
+
   const query = {};
   if (role) query.role = role;
   if (search) {
@@ -135,10 +165,7 @@ router.get('/users/:id', asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id);
 
   if (!user) {
-    return res.status(404).json({
-      success: false,
-      message: 'User not found'
-    });
+    return res.status(404).json({ success: false, message: 'User not found' });
   }
 
   // Get user's orders
@@ -181,16 +208,64 @@ router.put('/users/:id', asyncHandler(async (req, res) => {
   );
 
   if (!user) {
-    return res.status(404).json({
-      success: false,
-      message: 'User not found'
-    });
+    return res.status(404).json({ success: false, message: 'User not found' });
   }
 
   res.json({
     success: true,
     message: 'User updated successfully',
     data: { user }
+  });
+}));
+
+// @desc    Admin change own password (requires current password — NO username bypass)
+// @route   PUT /api/admin/change-password
+// @access  Private/Admin
+router.put('/change-password', [
+  body('currentPassword').notEmpty().withMessage('Current password is required'),
+  body('newPassword')
+    .isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
+    .matches(/[A-Z]/).withMessage('Must contain at least one uppercase letter')
+    .matches(/[a-z]/).withMessage('Must contain at least one lowercase letter')
+    .matches(/[0-9]/).withMessage('Must contain at least one number')
+    .matches(/[^a-zA-Z0-9]/).withMessage('Must contain at least one special character'),
+  body('confirmPassword').custom((val, { req }) => {
+    if (val !== req.body.newPassword) throw new Error('Passwords do not match');
+    return true;
+  }),
+  handleValidationErrors
+], asyncHandler(async (req, res) => {
+  // Use authenticated user ID from JWT — never trusts request body for identity
+  const user = await User.findById(req.user.id).select('+password');
+
+  if (!user) {
+    return res.status(404).json({ success: false, message: 'User not found' });
+  }
+
+  // Verify current password before allowing change
+  const isMatch = await user.matchPassword(req.body.currentPassword);
+  if (!isMatch) {
+    return res.status(401).json({
+      success: false,
+      message: 'Current password is incorrect'
+    });
+  }
+
+  // Prevent reusing the same password
+  const isSame = await user.matchPassword(req.body.newPassword);
+  if (isSame) {
+    return res.status(400).json({
+      success: false,
+      message: 'New password must be different from the current password'
+    });
+  }
+
+  user.password = req.body.newPassword; // bcrypt hash fires in pre-save hook
+  await user.save();
+
+  res.json({
+    success: true,
+    message: 'Password changed successfully'
   });
 }));
 
@@ -217,10 +292,7 @@ router.get('/inventory', asyncHandler(async (req, res) => {
 
   res.json({
     success: true,
-    data: {
-      products,
-      summary
-    }
+    data: { products, summary }
   });
 }));
 

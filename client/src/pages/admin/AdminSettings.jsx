@@ -1,24 +1,57 @@
 import React, { useState } from 'react';
-import { Save, Store, CreditCard, Truck, Bell } from 'lucide-react';
+import { Save, Store, CreditCard, Truck, Bell, Shield, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/Card';
+import { PasswordStrengthMeter } from '../../components/ui/PasswordStrengthMeter';
+import { adminAPI } from '../../services/api';
 
 export default function AdminSettings() {
   const [activeTab, setActiveTab] = useState('general');
   const [saved, setSaved] = useState(false);
+
+  // Security (change password) state
+  const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [pwLoading, setPwLoading] = useState(false);
+  const [pwError, setPwError] = useState('');
+  const [pwSuccess, setPwSuccess] = useState('');
 
   const handleSave = () => {
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   };
 
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setPwError('');
+    setPwSuccess('');
+    if (pwForm.newPassword !== pwForm.confirmPassword) {
+      setPwError('New passwords do not match');
+      return;
+    }
+    setPwLoading(true);
+    try {
+      await adminAPI.changePassword(pwForm);
+      setPwSuccess('Password changed successfully!');
+      setPwForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (err) {
+      const errs = err.response?.data?.errors;
+      setPwError(errs ? errs.map(e => e.msg).join(', ') : err.response?.data?.message || 'Failed to change password');
+    } finally {
+      setPwLoading(false);
+    }
+  };
+
   const tabs = [
-    { id: 'general', label: 'General', icon: Store },
-    { id: 'payment', label: 'Payment', icon: CreditCard },
-    { id: 'shipping', label: 'Shipping', icon: Truck },
+    { id: 'general',       label: 'General',       icon: Store },
+    { id: 'payment',       label: 'Payment',       icon: CreditCard },
+    { id: 'shipping',      label: 'Shipping',      icon: Truck },
     { id: 'notifications', label: 'Notifications', icon: Bell },
+    { id: 'security',      label: 'Security',      icon: Shield },
   ];
+
 
   return (
     <div className="p-6 lg:p-8">
@@ -211,6 +244,112 @@ export default function AdminSettings() {
                     <input type="checkbox" className="rounded text-primary h-5 w-5" />
                   </div>
                   <Input label="Admin Email" type="email" defaultValue="admin@aradhyagems.com" />
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Security Tab */}
+          {activeTab === 'security' && (
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Change Password</CardTitle>
+                  <CardDescription>
+                    Update your admin password. Your identity is verified via current session — no username lookup is needed.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {pwError && (
+                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-600 text-sm">
+                      {pwError}
+                    </div>
+                  )}
+                  {pwSuccess && (
+                    <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md text-green-700 text-sm">
+                      {pwSuccess}
+                    </div>
+                  )}
+                  <form onSubmit={handleChangePassword} className="space-y-5">
+                    {/* Current password */}
+                    <div className="relative">
+                      <Input
+                        label="Current Password"
+                        type={showCurrent ? 'text' : 'password'}
+                        placeholder="••••••••"
+                        value={pwForm.currentPassword}
+                        onChange={e => setPwForm(f => ({ ...f, currentPassword: e.target.value }))}
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowCurrent(!showCurrent)}
+                        className="absolute right-3 top-[34px] text-gray-400 hover:text-gray-600"
+                      >
+                        {showCurrent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+
+                    {/* New password */}
+                    <div className="relative">
+                      <Input
+                        label="New Password"
+                        type={showNew ? 'text' : 'password'}
+                        placeholder="••••••••"
+                        value={pwForm.newPassword}
+                        onChange={e => setPwForm(f => ({ ...f, newPassword: e.target.value }))}
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNew(!showNew)}
+                        className="absolute right-3 top-[34px] text-gray-400 hover:text-gray-600"
+                      >
+                        {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                      <PasswordStrengthMeter password={pwForm.newPassword} />
+                    </div>
+
+                    {/* Confirm password */}
+                    <Input
+                      label="Confirm New Password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={pwForm.confirmPassword}
+                      onChange={e => setPwForm(f => ({ ...f, confirmPassword: e.target.value }))}
+                      required
+                    />
+
+                    <Button type="submit" disabled={pwLoading} className="flex items-center gap-2">
+                      {pwLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Changing...</> : 'Change Password'}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Security Notes</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-2 text-sm text-gray-600">
+                    <li className="flex items-start gap-2">
+                      <span className="text-green-500 mt-0.5">✓</span>
+                      Passwords are hashed using bcrypt (10 salt rounds) — never stored in plaintext
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-green-500 mt-0.5">✓</span>
+                      Password change requires current password — identity verified from JWT, not username
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-green-500 mt-0.5">✓</span>
+                      All database queries use Mongoose (parameterized) — SQL/NoSQL injection not possible
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-green-500 mt-0.5">✓</span>
+                      Session persists for 7 days via secure JWT — no re-login needed on tab close
+                    </li>
+                  </ul>
                 </CardContent>
               </Card>
             </div>

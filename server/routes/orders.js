@@ -7,12 +7,30 @@ const Coupon = require('../models/Coupon');
 const { protect, authorize } = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/error');
 
+// ── Helper: compute India GST for a single order item ──────────────────────
+// 3% on material values (gold/diamond/stone/pearl/ruby/metal)
+// 5% on making charges
+// Falls back to 3% flat on item price if no priceBreakdown stored
+function computeItemGST(product, quantity) {
+  const pb = product.priceBreakdown;
+  if (pb && (pb.goldValue || pb.diamondValue || pb.stoneValue || pb.pearlValue || pb.rubyValue || pb.metalValue || pb.makingCharges)) {
+    const materialValue = ((pb.goldValue || 0) + (pb.diamondValue || 0) + (pb.stoneValue || 0) +
+      (pb.pearlValue || 0) + (pb.rubyValue || 0) + (pb.metalValue || 0)) * quantity;
+    const makingValue = (pb.makingCharges || 0) * quantity;
+    const materialGST = Math.round(materialValue * 0.03 * 100) / 100;
+    const makingGST = Math.round(makingValue * 0.05 * 100) / 100;
+    return { materialGST, makingGST, total: Math.round((materialGST + makingGST) * 100) / 100 };
+  }
+  const fallback = Math.round(product.price * quantity * 0.03 * 100) / 100;
+  return { materialGST: fallback, makingGST: 0, total: fallback };
+}
+
 // @desc    Get user's orders
 // @route   GET /api/orders
 // @access  Private
 router.get('/', protect, asyncHandler(async (req, res) => {
   const { status, page = 1, limit = 10 } = req.query;
-  
+
   const query = { user: req.user.id };
   if (status) query.status = status;
 
@@ -70,7 +88,7 @@ router.get('/:id', protect, asyncHandler(async (req, res) => {
 router.post('/', protect, asyncHandler(async (req, res) => {
   const { shippingAddress, billingAddress, paymentMethod, notes, couponCode } = req.body;
 
-  // Get user's cart
+  // Get user's cart — populate full product including priceBreakdown for GST
   const cart = await Cart.findOne({ user: req.user.id })
     .populate('items.product');
 
@@ -87,7 +105,7 @@ router.post('/', protect, asyncHandler(async (req, res) => {
 
   for (const item of cart.items) {
     const product = item.product;
-    
+
     if (!product || !product.isActive) {
       return res.status(400).json({
         success: false,
@@ -144,13 +162,25 @@ router.post('/', protect, asyncHandler(async (req, res) => {
     appliedCoupon = coupon;
   }
 
-  // ── Calculate totals (server is the ONLY source of truth) ──
-  const taxableAmount = Math.round((subtotal - discount) * 100) / 100;
-  const shippingCost = subtotal >= 50000 ? 0 : 500; // Free shipping over ₹50,000
-  const tax = Math.round(taxableAmount * 0.03 * 100) / 100; // 3% GST
-  const total = Math.round((taxableAmount + tax + shippingCost) * 100) / 100;
+  // ── India GST: 3% on material value + 5% on making charges ─────────────
+  let totalMaterialGST = 0;
+  let totalMakingGST = 0;
+  for (const item of cart.items) {
+    const gst = computeItemGST(item.product, item.quantity);
+    totalMaterialGST += gst.materialGST;
+    totalMakingGST += gst.makingGST;
+  }
+  totalMaterialGST = Math.round(totalMaterialGST * 100) / 100;
+  totalMakingGST = Math.round(totalMakingGST * 100) / 100;
+  const tax = Math.round((totalMaterialGST + totalMakingGST) * 100) / 100;
 
-  // ── Atomic stock deduction (prevents overselling) ──────
+  // ── Shipping (free above ₹50,000) ──────────────────────────────────────
+  const shippingCost = subtotal >= 50000 ? 0 : 500;
+
+  // ── Final total (subtotal - discount + GST + shipping) ─────────────────
+  const total = Math.round((subtotal - discount + tax + shippingCost) * 100) / 100;
+
+  // ── Atomic stock deduction (prevents overselling) ──────────────────────
   const stockUpdates = [];
   for (const item of cart.items) {
     const result = await Product.findOneAndUpdate(
@@ -175,7 +205,7 @@ router.post('/', protect, asyncHandler(async (req, res) => {
     stockUpdates.push({ productId: item.product._id, quantity: item.quantity });
   }
 
-  // ── Create order ──────────────────────────────────────
+  // ── Create order ────────────────────────────────────────────────────────
   const order = await Order.create({
     user: req.user.id,
     items: orderItems,
@@ -185,6 +215,7 @@ router.post('/', protect, asyncHandler(async (req, res) => {
     subtotal,
     shippingCost,
     tax,
+    taxBreakdown: { materialGST: totalMaterialGST, makingGST: totalMakingGST },
     discount,
     total,
     notes,
@@ -192,7 +223,7 @@ router.post('/', protect, asyncHandler(async (req, res) => {
     paymentStatus: paymentMethod === 'cod' ? 'pending' : 'paid'
   });
 
-  // ── Mark coupon as used ────────────────────────────────
+  // ── Mark coupon as used ─────────────────────────────────────────────────
   if (appliedCoupon) {
     appliedCoupon.usedCount += 1;
     appliedCoupon.usedBy.push({ user: req.user.id });
@@ -260,7 +291,7 @@ router.put('/:id/cancel', protect, asyncHandler(async (req, res) => {
 // @access  Private/Admin
 router.get('/admin/all', protect, authorize('admin'), asyncHandler(async (req, res) => {
   const { status, page = 1, limit = 20 } = req.query;
-  
+
   const query = {};
   if (status) query.status = status;
 
@@ -283,7 +314,8 @@ router.get('/admin/all', protect, authorize('admin'), asyncHandler(async (req, r
       $group: {
         _id: '$status',
         count: { $sum: 1 },
-        totalAmount: { $sum: '$total' }
+        totalAmount: { $sum: '$total' },
+        totalTax: { $sum: '$tax' }
       }
     }
   ]);
@@ -319,11 +351,11 @@ router.put('/:id/status', protect, authorize('admin'), asyncHandler(async (req, 
   }
 
   order.status = status;
-  
+
   if (trackingNumber) order.trackingNumber = trackingNumber;
   if (deliveryPartner) order.deliveryPartner = deliveryPartner;
   if (expectedDelivery) order.expectedDelivery = expectedDelivery;
-  
+
   if (status === 'delivered') {
     order.deliveredAt = new Date();
   }

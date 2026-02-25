@@ -149,10 +149,26 @@ export default function CartPage() {
                           {pricing.shippingCost === 0 ? 'Free' : `₹${pricing.shippingCost.toLocaleString()}`}
                         </span>
                     </div>
-                    <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Tax (3% GST)</span>
-                        <span>₹{pricing.tax.toLocaleString()}</span>
-                    </div>
+                    {/* India GST Breakdown */}
+                    {pricing.gstBreakdown?.materialGST > 0 && (
+                      <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">GST on Materials (3%)</span>
+                          <span>₹{pricing.gstBreakdown.materialGST.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {pricing.gstBreakdown?.makingGST > 0 && (
+                      <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">GST on Making Charges (5%)</span>
+                          <span>₹{pricing.gstBreakdown.makingGST.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {/* Fallback: show single tax line if no breakdown */}
+                    {!pricing.gstBreakdown?.materialGST && !pricing.gstBreakdown?.makingGST && pricing.tax > 0 && (
+                      <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">GST</span>
+                          <span>₹{pricing.tax.toLocaleString()}</span>
+                      </div>
+                    )}
                     {discount > 0 && (
                       <div className="flex justify-between text-sm text-green-600">
                           <span>Coupon Discount</span>

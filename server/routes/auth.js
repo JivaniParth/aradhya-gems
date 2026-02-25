@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
+const crypto = require('crypto');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
-const { protect } = require('../middleware/auth');
+const { protect, authorize } = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/error');
 
 // Validation middleware
@@ -17,6 +18,14 @@ const handleValidationErrors = (req, res, next) => {
   next();
 };
 
+// Password strength validator — matches client-side rules
+const passwordStrengthValidator = body('newPassword')
+  .isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
+  .matches(/[A-Z]/).withMessage('Password must contain at least one uppercase letter')
+  .matches(/[a-z]/).withMessage('Password must contain at least one lowercase letter')
+  .matches(/[0-9]/).withMessage('Password must contain at least one number')
+  .matches(/[^a-zA-Z0-9]/).withMessage('Password must contain at least one special character');
+
 // @desc    Register user
 // @route   POST /api/auth/register
 // @access  Public
@@ -24,10 +33,14 @@ router.post('/register', [
   body('firstName').trim().notEmpty().withMessage('First name is required'),
   body('lastName').trim().notEmpty().withMessage('Last name is required'),
   body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email'),
-  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+  body('password')
+    .isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
+    .matches(/[A-Z]/).withMessage('Password must contain at least one uppercase letter')
+    .matches(/[a-z]/).withMessage('Password must contain at least one lowercase letter')
+    .matches(/[0-9]/).withMessage('Password must contain at least one number'),
   handleValidationErrors
 ], asyncHandler(async (req, res) => {
-  const { firstName, lastName, email, password } = req.body;
+  const { firstName, lastName, email, password, phone } = req.body;
 
   // Check if user exists
   const existingUser = await User.findOne({ email });
@@ -43,7 +56,8 @@ router.post('/register', [
     firstName,
     lastName,
     email,
-    password
+    password,
+    phone: phone || undefined
   });
 
   // Generate token
@@ -164,7 +178,7 @@ router.put('/profile', protect, [
   };
 
   // Remove undefined fields
-  Object.keys(fieldsToUpdate).forEach(key => 
+  Object.keys(fieldsToUpdate).forEach(key =>
     fieldsToUpdate[key] === undefined && delete fieldsToUpdate[key]
   );
 
@@ -180,12 +194,12 @@ router.put('/profile', protect, [
   });
 }));
 
-// @desc    Update password
+// @desc    Update password (logged-in user)
 // @route   PUT /api/auth/password
 // @access  Private
 router.put('/password', protect, [
   body('currentPassword').notEmpty().withMessage('Current password is required'),
-  body('newPassword').isLength({ min: 6 }).withMessage('New password must be at least 6 characters'),
+  passwordStrengthValidator,
   handleValidationErrors
 ], asyncHandler(async (req, res) => {
   const user = await User.findById(req.user.id).select('+password');
@@ -200,11 +214,83 @@ router.put('/password', protect, [
   }
 
   user.password = req.body.newPassword;
-  await user.save();
+  await user.save(); // triggers bcrypt hash in pre-save hook
 
   res.json({
     success: true,
     message: 'Password updated successfully'
+  });
+}));
+
+// @desc    Forgot password — generate reset token
+// @route   POST /api/auth/forgot-password
+// @access  Public
+router.post('/forgot-password', [
+  body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email'),
+  handleValidationErrors
+], asyncHandler(async (req, res) => {
+  const user = await User.findOne({ email: req.body.email });
+
+  // Always return success to prevent user enumeration attacks
+  if (!user) {
+    return res.json({
+      success: true,
+      message: 'If that email exists, a reset link has been sent.'
+    });
+  }
+
+  // Generate a secure random token
+  const resetToken = crypto.randomBytes(32).toString('hex');
+
+  // Store the HASH of the token (not the plain token) in DB
+  user.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+  user.resetPasswordExpire = Date.now() + 30 * 60 * 1000; // 30 minutes
+  await user.save({ validateBeforeSave: false });
+
+  // In production this would be emailed. For development, return the token.
+  const resetUrl = `/reset-password/${resetToken}`;
+
+  res.json({
+    success: true,
+    message: 'Password reset link generated.',
+    // DEV ONLY — remove this in production and send via email instead
+    resetToken,
+    resetUrl
+  });
+}));
+
+// @desc    Reset password using token
+// @route   PUT /api/auth/reset-password/:token
+// @access  Public
+router.put('/reset-password/:token', [
+  passwordStrengthValidator,
+  handleValidationErrors
+], asyncHandler(async (req, res) => {
+  // Hash the incoming token to compare with stored hash
+  const hashedToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
+
+  // Find user with valid (non-expired) token — no username/email needed
+  const user = await User.findOne({
+    resetPasswordToken: hashedToken,
+    resetPasswordExpire: { $gt: Date.now() }
+  });
+
+  if (!user) {
+    return res.status(400).json({
+      success: false,
+      message: 'Password reset token is invalid or has expired'
+    });
+  }
+
+  // Set the new password (bcrypt hashing fires in pre-save hook)
+  user.password = req.body.newPassword;
+  user.resetPasswordToken = undefined;
+  user.resetPasswordExpire = undefined;
+  await user.save();
+
+  res.json({
+    success: true,
+    message: 'Password reset successful. You can now log in with your new password.'
   });
 }));
 
@@ -263,11 +349,11 @@ router.put('/addresses/:addressId', protect, asyncHandler(async (req, res) => {
 // @access  Private
 router.delete('/addresses/:addressId', protect, asyncHandler(async (req, res) => {
   const user = await User.findById(req.user.id);
-  
+
   user.addresses = user.addresses.filter(
     addr => addr._id.toString() !== req.params.addressId
   );
-  
+
   await user.save();
 
   res.json({

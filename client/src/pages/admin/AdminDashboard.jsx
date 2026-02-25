@@ -88,6 +88,15 @@ export default function AdminDashboard() {
     },
   ];
 
+  const taxStats = [
+    { label: 'Total GST Collected', value: `₹${(overview.totalTax || 0).toLocaleString()}` },
+    { label: '  GST on Materials (3%)', value: `₹${(overview.gstBreakdown?.materialGST || 0).toLocaleString()}` },
+    { label: '  GST on Making Charges (5%)', value: `₹${(overview.gstBreakdown?.makingGST || 0).toLocaleString()}` },
+    { label: 'Total Discounts Given', value: `₹${(overview.totalDiscount || 0).toLocaleString()}` },
+    { label: 'Total Shipping Collected', value: `₹${(overview.totalShipping || 0).toLocaleString()}` },
+  ];
+
+
   return (
     <div className="p-6 lg:p-8">
       {/* Back Button */}
@@ -122,6 +131,21 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
         ))}
+      </div>
+
+      {/* Tax & Financial Breakdown */}
+      <div className="mb-8">
+        <h2 className="text-lg font-serif font-semibold text-secondary mb-4">Financial Breakdown (Paid Orders)</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          {taxStats.map((s) => (
+            <Card key={s.label}>
+              <CardContent className="p-4">
+                <p className="text-xs text-gray-500 mb-1 leading-tight">{s.label}</p>
+                <p className="text-lg font-bold text-secondary">{s.value}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
 
       {/* Order Status Breakdown */}

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 
 // Layouts
@@ -24,6 +24,7 @@ import OrderConfirmationPage from './pages/OrderConfirmationPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
+import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 
 // Protected Pages
 import AccountPage from './pages/AccountPage';
@@ -36,7 +37,17 @@ import OrderManagement from './pages/admin/OrderManagement';
 import CustomerManagement from './pages/admin/CustomerManagement';
 import AdminSettings from './pages/admin/AdminSettings';
 
+import { useAuthStore } from './store/useAuthStore';
+
 function App() {
+  const { refreshUser, isAuthenticated } = useAuthStore();
+
+  // Re-validate stored JWT and refresh user data on every app load/tab reopen
+  useEffect(() => {
+    if (isAuthenticated) {
+      refreshUser();
+    }
+  }, []);
   return (
     <BrowserRouter>
       <Routes>
@@ -86,6 +97,12 @@ function App() {
             <ForgotPasswordPage />
           </GuestRoute>
         } />
+        <Route path="/reset-password/:token" element={
+          <GuestRoute>
+            <ResetPasswordPage />
+          </GuestRoute>
+        } />
+
 
         {/* Admin Routes */}
         <Route path="/admin" element={

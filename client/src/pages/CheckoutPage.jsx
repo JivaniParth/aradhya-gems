@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod'; // Import zod
+import { z } from 'zod';
 import { ArrowLeft, CreditCard, AlertCircle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { useCartStore } from '../store/useCartStore';
 import { useOrderStore } from '../store/useOrderStore';
 
-// Define the validation schema
 const checkoutSchema = z.object({
   firstName: z.string().min(2, "First name is required"),
   lastName: z.string().min(2, "Last name is required"),
@@ -48,7 +47,6 @@ export default function CheckoutPage() {
     setIsProcessing(true);
     setOrderError('');
 
-    // Build order payload — server recalculates ALL prices
     const orderPayload = {
       shippingAddress: {
         firstName: data.firstName,
@@ -68,13 +66,8 @@ export default function CheckoutPage() {
     setIsProcessing(false);
 
     if (result.success) {
-      // Server has cleared the cart, reset client state
       await clearCart();
-      navigate('/order-confirmation', { 
-        state: { 
-          order: result.order
-        } 
-      });
+      navigate('/order-confirmation', { state: { order: result.order } });
     } else {
       setOrderError(result.error || 'Failed to place order. Please try again.');
     }
@@ -203,10 +196,27 @@ export default function CheckoutPage() {
                       <span className="text-muted-foreground">Shipping</span>
                       <span>{pricing.shippingCost === 0 ? 'Free' : `₹${pricing.shippingCost}`}</span>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Tax (3% GST)</span>
-                      <span>₹{pricing.tax.toLocaleString()}</span>
-                    </div>
+
+                    {/* India GST Breakdown */}
+                    {pricing.gstBreakdown?.materialGST > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">GST on Materials (3%)</span>
+                        <span>₹{pricing.gstBreakdown.materialGST.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {pricing.gstBreakdown?.makingGST > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">GST on Making Charges (5%)</span>
+                        <span>₹{pricing.gstBreakdown.makingGST.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {!pricing.gstBreakdown?.materialGST && !pricing.gstBreakdown?.makingGST && pricing.tax > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">GST</span>
+                        <span>₹{pricing.tax.toLocaleString()}</span>
+                      </div>
+                    )}
+
                     {discount > 0 && (
                       <div className="flex justify-between text-sm text-green-600">
                         <span>Coupon ({coupon.code})</span>

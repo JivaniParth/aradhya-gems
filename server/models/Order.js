@@ -76,6 +76,10 @@ const orderSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  taxBreakdown: {
+    materialGST: { type: Number, default: 0 }, // 3% on gold/silver/diamond/stone values
+    makingGST: { type: Number, default: 0 }    // 5% on making charges
+  },
   discount: {
     type: Number,
     default: 0

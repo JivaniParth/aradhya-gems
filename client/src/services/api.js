@@ -73,7 +73,13 @@ export const authAPI = {
     api.delete(`/auth/addresses/${addressId}`),
 
   logout: () =>
-    api.post('/auth/logout')
+    api.post('/auth/logout'),
+
+  forgotPassword: (email) =>
+    api.post('/auth/forgot-password', { email }),
+
+  resetPassword: (token, newPassword) =>
+    api.put(`/auth/reset-password/${token}`, { newPassword })
 };
 
 // ═══════════════════════════════════════════════════════
@@ -202,7 +208,10 @@ export const adminAPI = {
     api.put(`/admin/users/${id}`, data),
 
   getInventory: () =>
-    api.get('/admin/inventory')
+    api.get('/admin/inventory'),
+
+  changePassword: (data) =>
+    api.put('/admin/change-password', data)
 };
 
 export default api;
