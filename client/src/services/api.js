@@ -79,7 +79,13 @@ export const authAPI = {
     api.post('/auth/forgot-password', { email }),
 
   resetPassword: (token, newPassword) =>
-    api.put(`/auth/reset-password/${token}`, { newPassword })
+    api.put(`/auth/reset-password/${token}`, { newPassword }),
+
+  verifyEmail: (token) =>
+    api.get(`/auth/verify-email/${token}`),
+
+  resendVerification: (email) =>
+    api.post('/auth/resend-verification', { email })
 };
 
 // ═══════════════════════════════════════════════════════
@@ -185,10 +191,13 @@ export const wishlistAPI = {
     api.get('/wishlist'),
 
   add: (productId) =>
-    api.post('/wishlist', { productId }),
+    api.post(`/wishlist/${productId}`),
 
   remove: (productId) =>
-    api.delete(`/wishlist/${productId}`)
+    api.delete(`/wishlist/${productId}`),
+
+  clear: () =>
+    api.delete('/wishlist')
 };
 
 // ═══════════════════════════════════════════════════════
@@ -209,6 +218,9 @@ export const adminAPI = {
 
   getInventory: () =>
     api.get('/admin/inventory'),
+
+  deleteUser: (id) =>
+    api.delete(`/admin/users/${id}`),
 
   changePassword: (data) =>
     api.put('/admin/change-password', data)

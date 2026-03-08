@@ -15,17 +15,17 @@ export default function ProductCard({ product, showQuickAdd = true }) {
   const handleAddToCart = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    addItem(product);
+    addItem(productId);
   };
 
   const handleWishlistToggle = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    toggleItem(product);
+    toggleItem(productId);
   };
 
-  const discount = product.originalPrice 
-    ? Math.round((1 - product.price / product.originalPrice) * 100) 
+  const discount = product.originalPrice
+    ? Math.round((1 - product.price / product.originalPrice) * 100)
     : 0;
 
   return (
@@ -39,15 +39,14 @@ export default function ProductCard({ product, showQuickAdd = true }) {
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
         </Link>
-        
+
         {/* Wishlist Button */}
         <button
           onClick={handleWishlistToggle}
-          className={`absolute top-2 right-2 p-2 rounded-full transition-colors z-10 ${
-            inWishlist 
-              ? 'bg-red-50 text-red-500' 
+          className={`absolute top-2 right-2 p-2 rounded-full transition-colors z-10 ${inWishlist
+              ? 'bg-red-50 text-red-500'
               : 'bg-white/80 text-gray-600 hover:bg-white hover:text-red-500'
-          }`}
+            }`}
         >
           <Heart className={`w-4 h-4 ${inWishlist ? 'fill-current' : ''}`} />
         </button>
@@ -86,12 +85,12 @@ export default function ProductCard({ product, showQuickAdd = true }) {
             </span>
           </div>
         )}
-        
+
         {/* Quick Add Overlay - Desktop Only */}
         {showQuickAdd && product.stock > 0 && (
           <div className="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm p-3 translate-y-full transition-transform duration-300 group-hover:translate-y-0 hidden md:block">
-            <Button 
-              size="sm" 
+            <Button
+              size="sm"
               className="w-full"
               onClick={handleAddToCart}
             >

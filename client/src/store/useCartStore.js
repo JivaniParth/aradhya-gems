@@ -26,7 +26,7 @@ export const useCartStore = create((set, get) => ({
         pricing,
         isLoading: false
       });
-    } catch (err) {
+    } catch {
       // If 401, user not logged in — use empty cart
       set({ items: [], pricing: { subtotal: 0, shippingCost: 0, tax: 0, total: 0 }, isLoading: false });
     }
@@ -95,7 +95,7 @@ export const useCartStore = create((set, get) => ({
   clearCart: async () => {
     try {
       await cartAPI.clear();
-    } catch (e) { /* ignore */ }
+    } catch { /* ignore */ }
     set({
       items: [],
       pricing: { subtotal: 0, shippingCost: 0, tax: 0, gstBreakdown: { materialGST: 0, makingGST: 0 }, total: 0, itemCount: 0 },

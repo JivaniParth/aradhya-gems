@@ -44,7 +44,7 @@ app.use(cors({
 // Security headers
 app.use(helmet());
 
-// Rate limiting — 100 requests per 15 min per IP
+// Rate limiting — 100 requests per 15 min per IP (general)
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
@@ -58,6 +58,24 @@ const orderLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
   message: { success: false, message: 'Too many order attempts, please try again later.' }
+});
+
+// Auth limiter — prevent brute-force login/register (10 per 15 min per IP)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many authentication attempts, please try again later.' }
+});
+
+// Password reset limiter (3 per 15 min per IP)
+const passwordResetLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 3,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many password reset attempts, please try again later.' }
 });
 
 // Apply general rate limiter to all API routes
@@ -86,7 +104,11 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// API routes
+// API routes — auth routes get stricter limiter
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/forgot-password', passwordResetLimiter);
+app.use('/api/auth/resend-verification', passwordResetLimiter);
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/cart', cartRoutes);

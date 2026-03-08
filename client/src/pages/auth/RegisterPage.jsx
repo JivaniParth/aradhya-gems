@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
+import 'react-phone-number-input/style.css';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -13,7 +15,10 @@ const registerSchema = z.object({
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
   lastName: z.string().min(2, 'Last name must be at least 2 characters'),
   email: z.string().email('Please enter a valid email address'),
-  phone: z.string().optional(),
+  phone: z.string().optional().refine((val) => {
+    if (!val) return true; // it's optional
+    return isValidPhoneNumber(val);
+  }, 'Please enter a valid phone number with country code'),
   password: z.string()
     .min(8, 'Password must be at least 8 characters')
     .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
@@ -34,7 +39,7 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const { register, handleSubmit, watch, formState: { errors } } = useForm({
+  const { register, handleSubmit, control, watch, formState: { errors } } = useForm({
     resolver: zodResolver(registerSchema),
     defaultValues: { acceptTerms: false },
   });
@@ -50,7 +55,7 @@ export default function RegisterPage() {
       password: data.password,
       phone: data.phone || undefined,
     });
-    
+
     if (result.success) {
       navigate('/');
     }
@@ -99,13 +104,22 @@ export default function RegisterPage() {
               {...register('email')}
             />
 
-            <Input
-              label="Phone Number (Optional)"
-              type="tel"
-              placeholder="+91 98765 43210"
-              error={errors.phone?.message}
-              {...register('phone')}
-            />
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700">Phone Number (Optional)</label>
+              <Controller
+                name="phone"
+                control={control}
+                render={({ field }) => (
+                  <PhoneInput
+                    {...field}
+                    international
+                    defaultCountry="IN"
+                    className={`w-full border rounded-lg px-4 py-2 outline-none transition-colors bg-white text-secondary focus-within:border-primary focus-within:ring-1 focus-within:ring-primary ${errors.phone ? 'border-red-500' : 'border-gray-300'}`}
+                  />
+                )}
+              />
+              {errors.phone && <p className="text-xs text-red-500">{errors.phone.message}</p>}
+            </div>
 
             <div className="relative">
               <Input

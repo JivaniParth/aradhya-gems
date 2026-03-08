@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { 
-  Heart, 
-  Share2, 
-  Minus, 
-  Plus, 
+import {
+  Heart,
+  Share2,
+  Minus,
+  Plus,
   ShoppingBag,
   ChevronLeft,
   ChevronRight,
@@ -20,13 +20,15 @@ import {
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { productAPI } from '../services/api';
-import { 
+import {
   formatPrice,
   materials as allMaterials
 } from '../data/constants';
 import { useCartStore } from '../store/useCartStore';
 import { useWishlistStore } from '../store/useWishlistStore';
+import { useCurrencyStore } from '../store/useCurrencyStore';
 import ProductCard from '../components/shop/ProductCard';
+import CurrencySelector from '../components/common/CurrencySelector';
 import {
   ProductTrustSignals,
   PriceBreakdown,
@@ -55,12 +57,12 @@ function ImageGallery({ images, productName }) {
     <div className="space-y-4">
       {/* Main Image */}
       <div className="relative aspect-square bg-gray-50 rounded-lg overflow-hidden">
-        <img 
-          src={images[activeIndex]} 
+        <img
+          src={images[activeIndex]}
           alt={productName}
           className="w-full h-full object-cover"
         />
-        
+
         {/* Navigation Arrows */}
         {images.length > 1 && (
           <>
@@ -92,9 +94,8 @@ function ImageGallery({ images, productName }) {
             <button
               key={idx}
               onClick={() => setActiveIndex(idx)}
-              className={`flex-shrink-0 w-16 h-16 md:w-20 md:h-20 rounded-md overflow-hidden border-2 transition-colors ${
-                activeIndex === idx ? 'border-primary' : 'border-transparent hover:border-gray-300'
-              }`}
+              className={`flex-shrink-0 w-16 h-16 md:w-20 md:h-20 rounded-md overflow-hidden border-2 transition-colors ${activeIndex === idx ? 'border-primary' : 'border-transparent hover:border-gray-300'
+                }`}
             >
               <img src={img} alt="" className="w-full h-full object-cover" />
             </button>
@@ -131,15 +132,21 @@ function CollapsibleSection({ title, children, defaultOpen = false }) {
 export default function ProductDetailsPage() {
   const { id } = useParams();
   const { addItem } = useCartStore();
-  const { isInWishlist, toggleItem } = useWishlistStore();
-  const [quantity, setQuantity] = useState(1);
-  const [showPriceBreakdown, setShowPriceBreakdown] = useState(false);
+  const { isInWishlist, toggleWishlist } = useWishlistStore();
+  const { fetchRates } = useCurrencyStore();
 
-  // API state
   const [product, setProduct] = useState(null);
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const [quantity, setQuantity] = useState(1);
+  const [showPriceBreakdown, setShowPriceBreakdown] = useState(false);
+
+  // Fetch currency rates once when store mounts
+  useEffect(() => {
+    fetchRates();
+  }, [fetchRates]);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -181,8 +188,8 @@ export default function ProductDetailsPage() {
   }
 
   // Use virtual `images` getter or fallback to media array
-  const images = product.images?.length > 0 
-    ? product.images 
+  const images = product.images?.length > 0
+    ? product.images
     : (product.image ? [product.image] : []);
   const productId = product._id || product.id;
   const inWishlist = isInWishlist(productId);
@@ -190,13 +197,11 @@ export default function ProductDetailsPage() {
   const isNew = product.isNewArrival || product.isNew;
 
   const handleAddToCart = () => {
-    for (let i = 0; i < quantity; i++) {
-      addItem(product);
-    }
+    addItem(productId, quantity);
   };
 
-  const discount = product.originalPrice 
-    ? Math.round((1 - product.price / product.originalPrice) * 100) 
+  const discount = product.originalPrice
+    ? Math.round((1 - product.price / product.originalPrice) * 100)
     : 0;
 
   return (
@@ -226,7 +231,7 @@ export default function ProductDetailsPage() {
           {/* RIGHT: Product Info */}
           <div>
             {/* ABOVE THE FOLD: What, Who, Why Trust */}
-            
+
             {/* Category & Badges */}
             <div className="flex items-center gap-2 mb-2">
               <span className="text-sm text-primary font-medium uppercase tracking-wide">
@@ -260,7 +265,10 @@ export default function ProductDetailsPage() {
             </div>
 
             {/* Price Section */}
-            <div className="bg-gray-50 rounded-lg p-4 mb-6">
+            <div className="bg-gray-50 rounded-lg p-4 mb-6 relative">
+              <div className="absolute top-4 right-4 z-10 hidden sm:block">
+                <CurrencySelector />
+              </div>
               <div className="flex items-baseline gap-3 mb-2">
                 <span className="text-3xl font-bold text-secondary">
                   {formatPrice(product.price)}
@@ -275,6 +283,9 @@ export default function ProductDetailsPage() {
                     </span>
                   </>
                 )}
+              </div>
+              <div className="sm:hidden mb-3">
+                <CurrencySelector />
               </div>
 
               {/* Price includes GST */}
@@ -390,8 +401,8 @@ export default function ProductDetailsPage() {
               </div>
 
               {/* Add to Cart */}
-              <Button 
-                size="lg" 
+              <Button
+                size="lg"
                 className="flex-1"
                 onClick={handleAddToCart}
                 disabled={product.stock === 0}
@@ -402,13 +413,12 @@ export default function ProductDetailsPage() {
 
               {/* Wishlist */}
               <button
-                onClick={() => toggleItem(product)}
-                className={`p-3 border rounded-lg hover:bg-gray-50 ${
-                  inWishlist ? 'border-red-300 bg-red-50' : ''
-                }`}
+                onClick={() => toggleWishlist(productId)}
+                className={`p-3 border rounded-lg hover:bg-gray-50 ${inWishlist ? 'border-red-300 bg-red-50' : ''
+                  }`}
               >
-                <Heart 
-                  className={`w-5 h-5 ${inWishlist ? 'fill-red-500 text-red-500' : ''}`} 
+                <Heart
+                  className={`w-5 h-5 ${inWishlist ? 'fill-red-500 text-red-500' : ''}`}
                 />
               </button>
             </div>
@@ -477,7 +487,7 @@ export default function ProductDetailsPage() {
                 <div className="space-y-3 text-sm">
                   <OriginBadge origin={product.origin} />
                   <p className="text-muted-foreground">
-                    All our pieces are ethically sourced and handcrafted by skilled artisans. 
+                    All our pieces are ethically sourced and handcrafted by skilled artisans.
                     We maintain full transparency about the origin of our materials.
                   </p>
                 </div>
@@ -499,7 +509,7 @@ export default function ProductDetailsPage() {
                   <div>
                     <h5 className="font-medium text-secondary mb-1">Shipping</h5>
                     <p className="text-muted-foreground">
-                      Free insured shipping across India. Delivered in 3-5 business days 
+                      Free insured shipping across India. Delivered in 3-5 business days
                       in tamper-proof packaging with real-time tracking.
                     </p>
                   </div>
@@ -550,12 +560,12 @@ export default function ProductDetailsPage() {
             <div>
               <h4 className="font-medium text-secondary mb-2">Why We Chose This Material</h4>
               <p className="text-sm text-muted-foreground">
-                This piece uses {product.material} for its perfect balance of beauty and durability, 
+                This piece uses {product.material} for its perfect balance of beauty and durability,
                 ensuring it can be worn and treasured for generations.
               </p>
             </div>
           </div>
-          <Link 
+          <Link
             to="/guide/metals"
             className="inline-block mt-4 text-sm text-primary font-medium hover:underline"
           >

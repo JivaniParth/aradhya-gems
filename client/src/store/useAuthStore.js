@@ -27,25 +27,20 @@ export const useAuthStore = create(
           return { success: true, user };
         } catch (err) {
           const message = err.response?.data?.message || 'Login failed';
+          const needsVerification = err.response?.data?.needsVerification || false;
+          const userEmail = err.response?.data?.email || email;
           set({ isLoading: false, error: message });
-          return { success: false, error: message };
+          return { success: false, error: message, needsVerification, email: userEmail };
         }
       },
 
-      // Register — calls real server API
+      // Register — calls real server API (no auto-login, needs email verification)
       register: async (userData) => {
         set({ isLoading: true, error: null });
         try {
           const { data } = await authAPI.register(userData);
-          const { user, token } = data.data;
-          set({
-            user,
-            token,
-            isAuthenticated: true,
-            isLoading: false,
-            error: null
-          });
-          return { success: true, user };
+          set({ isLoading: false, error: null });
+          return { success: true, message: data.message, needsVerification: true };
         } catch (err) {
           const message = err.response?.data?.message || err.response?.data?.errors?.[0]?.msg || 'Registration failed';
           set({ isLoading: false, error: message });
@@ -57,7 +52,7 @@ export const useAuthStore = create(
       logout: async () => {
         try {
           await authAPI.logout();
-        } catch (e) { /* ignore */ }
+        } catch { /* ignore */ }
         set({
           user: null,
           token: null,
@@ -71,19 +66,35 @@ export const useAuthStore = create(
         try {
           const { data } = await authAPI.getMe();
           set({ user: data.data.user });
-        } catch (err) {
+        } catch {
           // Token invalid — log out
           set({ user: null, token: null, isAuthenticated: false });
         }
       },
 
-      // Update user profile
+      // Get current user details
+      getMe: async () => {
+        set({ isLoading: true, error: null });
+        try {
+          const { data } = await authAPI.getMe();
+          set({ user: data.data, isAuthenticated: true, isLoading: false });
+          return { success: true };
+        } catch {
+          set({ isLoading: false, isAuthenticated: false, user: null });
+          return { success: false };
+        }
+      },
+
+      // Update User Profile
       updateProfile: async (profileData) => {
         set({ isLoading: true, error: null });
         try {
           const { data } = await authAPI.updateProfile(profileData);
-          set({ user: data.data.user, isLoading: false });
-          return { success: true };
+          set((state) => ({
+            user: { ...state.user, ...data.data },
+            isLoading: false
+          }));
+          return { success: true, message: 'Profile updated successfully' };
         } catch (err) {
           const message = err.response?.data?.message || 'Update failed';
           set({ isLoading: false, error: message });
@@ -99,6 +110,11 @@ export const useAuthStore = create(
 
       // Clear error
       clearError: () => set({ error: null }),
+
+      // Set auth state (for email verification auto-login)
+      setAuth: (user, token) => {
+        set({ user, token, isAuthenticated: true, error: null });
+      },
     }),
     {
       name: 'auth-storage',

@@ -1,10 +1,10 @@
 import React from 'react';
-import { 
-  Shield, 
-  Award, 
-  RefreshCw, 
-  Truck, 
-  CheckCircle, 
+import {
+  Shield,
+  Award,
+  RefreshCw,
+  Truck,
+  CheckCircle,
   Clock,
   Phone,
   Star,
@@ -16,11 +16,12 @@ import { cn } from '../../lib/utils';
 // ========================================
 // TRUST BADGE - Single trust indicator
 // ========================================
-export function TrustBadge({ icon: Icon, title, description, className }) {
+export function TrustBadge({ icon, title, description, className }) {
+  const IconComponent = icon;
   return (
     <div className={cn("flex items-start gap-3", className)}>
       <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-        <Icon className="w-5 h-5 text-primary" />
+        <IconComponent className="w-5 h-5 text-primary" />
       </div>
       <div>
         <p className="font-medium text-secondary text-sm">{title}</p>
@@ -107,10 +108,10 @@ export function WhyBuyFromUs({ className }) {
             We understand buying jewelry online requires trust. Here's our promise to you.
           </p>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {reasons.map((reason, index) => (
-            <div 
+            <div
               key={index}
               className="bg-white rounded-lg p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
             >
@@ -134,23 +135,23 @@ export function ProductTrustSignals({ product, className }) {
   return (
     <div className={cn("space-y-4 py-4 border-y border-gray-100", className)}>
       <div className="grid grid-cols-2 gap-4">
-        <TrustBadge 
-          icon={Shield} 
+        <TrustBadge
+          icon={Shield}
           title={product.hallmark || 'BIS Hallmarked'}
           description="Certified purity"
         />
-        <TrustBadge 
-          icon={Award} 
+        <TrustBadge
+          icon={Award}
           title={product.certification || 'Certified'}
           description="Authenticity guaranteed"
         />
-        <TrustBadge 
-          icon={RefreshCw} 
+        <TrustBadge
+          icon={RefreshCw}
           title="Lifetime Exchange"
           description="At current rates"
         />
-        <TrustBadge 
-          icon={Clock} 
+        <TrustBadge
+          icon={Clock}
           title="30-Day Returns"
           description="Hassle-free"
         />
@@ -232,7 +233,7 @@ export function ReviewHighlights({ reviews, className }) {
       <p className="text-xs text-muted-foreground mb-2">What customers say:</p>
       <div className="flex flex-wrap gap-2">
         {reviews.highlights.map((highlight, index) => (
-          <span 
+          <span
             key={index}
             className="inline-flex items-center gap-1 text-xs bg-green-50 text-green-700 px-2 py-1 rounded-full"
           >
@@ -280,7 +281,7 @@ export function OccasionTags({ occasions, className }) {
       <p className="text-xs text-muted-foreground mb-2">Perfect for:</p>
       <div className="flex flex-wrap gap-2">
         {occasions.map((occasion) => (
-          <span 
+          <span
             key={occasion}
             className="text-xs bg-primary/5 text-secondary px-3 py-1 rounded-full border border-primary/10"
           >

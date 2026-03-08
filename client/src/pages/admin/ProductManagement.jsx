@@ -166,7 +166,7 @@ export default function ProductManagement() {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">{product.sku}</td>
                     <td className="px-6 py-4 text-sm text-gray-600">{product.category}</td>
-                    <td className="px-6 py-4 text-sm font-medium">${product.price.toLocaleString()}</td>
+                    <td className="px-6 py-4 text-sm font-medium">₹{product.price.toLocaleString()}</td>
                     <td className="px-6 py-4">
                       <Badge variant={product.stock <= 5 ? (product.stock <= 2 ? 'danger' : 'warning') : 'success'}>
                         {product.stock} units

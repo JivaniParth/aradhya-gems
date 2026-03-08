@@ -2,9 +2,11 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const { body, validationResult } = require('express-validator');
+const { isValidPhoneNumber } = require('libphonenumber-js');
 const User = require('../models/User');
 const { protect, authorize } = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/error');
+const { sendVerificationEmail } = require('../config/email');
 
 // Validation middleware
 const handleValidationErrors = (req, res, next) => {
@@ -33,6 +35,13 @@ router.post('/register', [
   body('firstName').trim().notEmpty().withMessage('First name is required'),
   body('lastName').trim().notEmpty().withMessage('Last name is required'),
   body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email'),
+  body('phone').optional().custom((value) => {
+    if (!value) return true;
+    if (!isValidPhoneNumber(value)) {
+      throw new Error('Invalid phone number format');
+    }
+    return true;
+  }),
   body('password')
     .isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
     .matches(/[A-Z]/).withMessage('Password must contain at least one uppercase letter')
@@ -60,21 +69,30 @@ router.post('/register', [
     phone: phone || undefined
   });
 
-  // Generate token
-  const token = user.getSignedJwtToken();
+  // Generate email verification token
+  const verificationToken = user.getEmailVerificationToken();
+  await user.save({ validateBeforeSave: false });
+
+  // Send verification email
+  try {
+    await sendVerificationEmail(user, verificationToken);
+  } catch (err) {
+    // If email fails, still create account but log error
+    console.error('Failed to send verification email:', err.message);
+  }
 
   res.status(201).json({
     success: true,
-    message: 'Registration successful',
+    message: 'Registration successful! Please check your email to verify your account.',
     data: {
       user: {
         id: user._id,
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
-        role: user.role
-      },
-      token
+        role: user.role,
+        isEmailVerified: false
+      }
     }
   });
 }));
@@ -104,6 +122,16 @@ router.post('/login', [
     return res.status(401).json({
       success: false,
       message: 'Account is deactivated'
+    });
+  }
+
+  // Check if email is verified
+  if (!user.isEmailVerified) {
+    return res.status(403).json({
+      success: false,
+      message: 'Please verify your email before logging in. Check your inbox for the verification link.',
+      needsVerification: true,
+      email: user.email
     });
   }
 
@@ -139,6 +167,95 @@ router.post('/login', [
   });
 }));
 
+// @desc    Verify email address
+// @route   GET /api/auth/verify-email/:token
+// @access  Public
+router.get('/verify-email/:token', asyncHandler(async (req, res) => {
+  // Hash the token from URL to compare with stored hash
+  const hashedToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
+
+  const user = await User.findOne({
+    emailVerificationToken: hashedToken,
+    emailVerificationExpire: { $gt: Date.now() }
+  });
+
+  if (!user) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid or expired verification link. Please request a new one.'
+    });
+  }
+
+  // Mark email as verified
+  user.isEmailVerified = true;
+  user.emailVerificationToken = undefined;
+  user.emailVerificationExpire = undefined;
+  await user.save({ validateBeforeSave: false });
+
+  // Generate token so user can log in immediately
+  const token = user.getSignedJwtToken();
+
+  res.json({
+    success: true,
+    message: 'Email verified successfully! You can now log in.',
+    data: {
+      user: {
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: user.role,
+        isEmailVerified: true
+      },
+      token
+    }
+  });
+}));
+
+// @desc    Resend verification email
+// @route   POST /api/auth/resend-verification
+// @access  Public
+router.post('/resend-verification', [
+  body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email'),
+  handleValidationErrors
+], asyncHandler(async (req, res) => {
+  const user = await User.findOne({ email: req.body.email });
+
+  if (!user) {
+    // Don't reveal if user exists
+    return res.json({
+      success: true,
+      message: 'If an account exists with this email, a verification link has been sent.'
+    });
+  }
+
+  if (user.isEmailVerified) {
+    return res.status(400).json({
+      success: false,
+      message: 'Email is already verified. Please log in.'
+    });
+  }
+
+  // Generate new token
+  const verificationToken = user.getEmailVerificationToken();
+  await user.save({ validateBeforeSave: false });
+
+  try {
+    await sendVerificationEmail(user, verificationToken);
+  } catch (err) {
+    console.error('Failed to send verification email:', err.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to send verification email. Please try again later.'
+    });
+  }
+
+  res.json({
+    success: true,
+    message: 'If an account exists with this email, a verification link has been sent.'
+  });
+}));
+
 // @desc    Get current user
 // @route   GET /api/auth/me
 // @access  Private
@@ -168,7 +285,13 @@ router.get('/me', protect, asyncHandler(async (req, res) => {
 router.put('/profile', protect, [
   body('firstName').optional().trim().notEmpty().withMessage('First name cannot be empty'),
   body('lastName').optional().trim().notEmpty().withMessage('Last name cannot be empty'),
-  body('phone').optional().trim(),
+  body('phone').optional().custom((value) => {
+    if (!value) return true;
+    if (!isValidPhoneNumber(value)) {
+      throw new Error('Invalid phone number format');
+    }
+    return true;
+  }),
   handleValidationErrors
 ], asyncHandler(async (req, res) => {
   const fieldsToUpdate = {

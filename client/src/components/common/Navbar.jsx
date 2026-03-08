@@ -1,30 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { 
-  Search, 
-  ShoppingBag, 
-  Menu, 
-  X, 
-  Heart, 
-  User, 
-  LogOut, 
-  ChevronRight,
-  Settings,
-  Loader2
+import {
+  Search,
+  ShoppingBag,
+  Menu,
+  X,
+  Heart,
+  User,
+  LogOut
 } from 'lucide-react';
-import { cn } from '../../lib/utils';
 import { useCartStore } from '../../store/useCartStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useWishlistStore } from '../../store/useWishlistStore';
 import { productAPI } from '../../services/api';
-import { categories, occasions } from '../../data/constants';
+import { categories, occasions, formatPrice } from '../../data/constants';
 
 export default function Navbar() {
   const { items } = useCartStore();
   const { user, isAuthenticated, logout } = useAuthStore();
   const wishlistItems = useWishlistStore((state) => state.items);
   const navigate = useNavigate();
-  
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -32,7 +28,7 @@ export default function Navbar() {
   const [searchLoading, setSearchLoading] = useState(false);
   const searchInputRef = useRef(null);
   const debounceRef = useRef(null);
-  
+
   const cartCount = items.reduce((acc, item) => acc + item.quantity, 0);
   const wishlistCount = wishlistItems.length;
 
@@ -125,7 +121,7 @@ export default function Navbar() {
               >
                 <Menu className="w-5 h-5 text-secondary" />
               </button>
-              
+
               <Link to="/" className="font-serif text-xl md:text-2xl font-bold text-primary">
                 Aradhya Gems
               </Link>
@@ -145,6 +141,9 @@ export default function Navbar() {
               <Link to="/shop?category=rings" className="text-sm font-medium text-secondary hover:text-primary transition-colors">
                 Rings
               </Link>
+              <Link to="/shop?category=pie-cut-diamonds" className="text-sm font-medium text-secondary hover:text-primary transition-colors">
+                Pie Cut Diamonds
+              </Link>
               <Link to="/about" className="text-sm font-medium text-secondary hover:text-primary transition-colors">
                 Our Story
               </Link>
@@ -152,6 +151,7 @@ export default function Navbar() {
 
             {/* Right: Icons - Search, Wishlist, Cart, (Account on desktop) */}
             <div className="flex items-center gap-1">
+
               <button
                 onClick={() => setSearchOpen(true)}
                 className="p-2 hover:bg-gray-50 rounded-full"
@@ -159,7 +159,7 @@ export default function Navbar() {
               >
                 <Search className="w-5 h-5 text-secondary" />
               </button>
-              
+
               <Link
                 to="/wishlist"
                 className="p-2 hover:bg-gray-50 rounded-full relative hidden sm:flex"
@@ -172,7 +172,7 @@ export default function Navbar() {
                   </span>
                 )}
               </Link>
-              
+
               <Link
                 to="/cart"
                 className="p-2 hover:bg-gray-50 rounded-full relative"
@@ -214,7 +214,7 @@ export default function Navbar() {
       {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
         <>
-          <div 
+          <div
             className="fixed inset-0 bg-black/50 z-50 md:hidden"
             onClick={() => setMobileMenuOpen(false)}
           />
@@ -390,7 +390,7 @@ export default function Navbar() {
       {/* Search Overlay */}
       {searchOpen && (
         <>
-          <div 
+          <div
             className="fixed inset-0 bg-black/50 z-50"
             onClick={() => setSearchOpen(false)}
           />
@@ -450,8 +450,8 @@ export default function Navbar() {
                         onClick={() => handleSearchSelect(product._id)}
                         className="w-full flex items-center gap-4 p-3 hover:bg-gray-50 rounded-lg text-left"
                       >
-                        <img 
-                          src={getProductImage(product)} 
+                        <img
+                          src={getProductImage(product)}
                           alt={product.name}
                           className="w-14 h-14 object-cover rounded-lg"
                         />
@@ -460,7 +460,7 @@ export default function Navbar() {
                           <p className="text-sm text-muted-foreground">{product.category}</p>
                         </div>
                         <p className="font-medium text-primary">
-                          ₹{product.price.toLocaleString('en-IN')}
+                          {formatPrice(product.price)}
                         </p>
                       </button>
                     ))}

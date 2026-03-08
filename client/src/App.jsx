@@ -25,6 +25,7 @@ import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';
+import EmailVerificationPage from './pages/auth/EmailVerificationPage';
 
 // Protected Pages
 import AccountPage from './pages/AccountPage';
@@ -38,14 +39,17 @@ import CustomerManagement from './pages/admin/CustomerManagement';
 import AdminSettings from './pages/admin/AdminSettings';
 
 import { useAuthStore } from './store/useAuthStore';
+import { useWishlistStore } from './store/useWishlistStore';
 
 function App() {
   const { refreshUser, isAuthenticated } = useAuthStore();
+  const { fetchWishlist } = useWishlistStore();
 
   // Re-validate stored JWT and refresh user data on every app load/tab reopen
   useEffect(() => {
     if (isAuthenticated) {
       refreshUser();
+      fetchWishlist();
     }
   }, []);
   return (
@@ -62,7 +66,7 @@ function App() {
           <Route path="wishlist" element={<WishlistPage />} />
           <Route path="product/:id" element={<ProductDetailsPage />} />
           <Route path="cart" element={<CartPage />} />
-          
+
           {/* Protected Customer Routes */}
           <Route path="checkout" element={
             <ProtectedRoute>
@@ -102,6 +106,7 @@ function App() {
             <ResetPasswordPage />
           </GuestRoute>
         } />
+        <Route path="/verify-email/:token" element={<EmailVerificationPage />} />
 
 
         {/* Admin Routes */}
@@ -112,6 +117,8 @@ function App() {
         }>
           <Route index element={<AdminDashboard />} />
           <Route path="products" element={<ProductManagement />} />
+          <Route path="products/new" element={<ProductManagement />} />
+          <Route path="products/:id/edit" element={<ProductManagement />} />
           <Route path="orders" element={<OrderManagement />} />
           <Route path="customers" element={<CustomerManagement />} />
           <Route path="settings" element={<AdminSettings />} />

@@ -1,31 +1,48 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Heart, Trash2, ShoppingBag, ArrowRight } from 'lucide-react';
+import { Heart, Trash2, ShoppingBag, ArrowRight, Loader2 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useWishlistStore } from '../store/useWishlistStore';
 import { useCartStore } from '../store/useCartStore';
+import { useAuthStore } from '../store/useAuthStore';
 import { formatPrice } from '../data/constants';
 
 export default function WishlistPage() {
-  const { items, removeItem, clearWishlist } = useWishlistStore();
+  const { items, isLoading, removeItem, clearWishlist, fetchWishlist } = useWishlistStore();
   const { addItem: addToCart } = useCartStore();
+  const { isAuthenticated } = useAuthStore();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchWishlist();
+    }
+  }, [isAuthenticated]);
 
   const handleAddToCart = (item) => {
-    // Wishlist items already have product data stored
-    if (item && item.stock > 0) {
-      addToCart(item);
-      removeItem(item.id || item._id);
+    const itemId = item._id || item.id;
+    if (itemId && item.stock > 0) {
+      addToCart(itemId);
+      removeItem(itemId);
     }
   };
 
   const handleAddAllToCart = () => {
     items.forEach((item) => {
-      if (item && item.stock > 0) {
-        addToCart(item);
+      const itemId = item._id || item.id;
+      if (itemId && item.stock > 0) {
+        addToCart(itemId);
       }
     });
     clearWishlist();
   };
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-20 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   if (items.length === 0) {
     return (
@@ -38,7 +55,7 @@ export default function WishlistPage() {
             Your Wishlist is Empty
           </h1>
           <p className="text-muted-foreground mb-6">
-            Save pieces you love by clicking the heart icon on any product. 
+            Save pieces you love by clicking the heart icon on any product.
             Your wishlist makes it easy to find and buy your favorites later.
           </p>
           <Link to="/shop">

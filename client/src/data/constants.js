@@ -27,6 +27,16 @@ export const categories = [
         seoDescription: 'Discover certified diamond and gold earrings. Every piece comes with authenticity certificate and lifetime warranty.'
     },
     {
+        id: 'pie-cut-diamonds',
+        name: 'Pie Cut Diamonds',
+        slug: 'pie-cut-diamonds',
+        description: 'Exquisite illusion setting pie cut diamonds for a grander look',
+        whyExists: 'Get the magnificent look of a much larger solitaire diamond at a fraction of the cost with perfectly matched and set smaller diamonds.',
+        image: 'https://images.unsplash.com/photo-1599643477877-530eb83abc8e?q=80&w=800&auto=format&fit=crop',
+        seoTitle: 'Pie Cut Diamond Jewelry | Aradhya Gems',
+        seoDescription: 'Shop stunning pie cut diamond jewelry. Masterfully crafted to create the illusion of large solitaire diamonds.'
+    },
+    {
         id: 'rings',
         name: 'Rings',
         slug: 'rings',
@@ -121,6 +131,22 @@ export function getCategoryBySlug(slug) {
 }
 
 export function formatPrice(price) {
+    // Use the currency store for multi-currency support
+    try {
+        const storeData = JSON.parse(localStorage.getItem('aradhya-currency') || '{}');
+        const currency = storeData?.state?.currency;
+        if (currency && currency.code && currency.rate) {
+            const converted = Math.round(price * currency.rate * 100) / 100;
+            return new Intl.NumberFormat(currency.locale || 'en-IN', {
+                style: 'currency',
+                currency: currency.code,
+                minimumFractionDigits: 0,
+                maximumFractionDigits: currency.code === 'INR' ? 0 : 2,
+            }).format(converted);
+        }
+    } catch {
+        // Fallback to INR
+    }
     return new Intl.NumberFormat('en-IN', {
         style: 'currency',
         currency: 'INR',

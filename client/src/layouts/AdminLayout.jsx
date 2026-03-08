@@ -1,11 +1,11 @@
 import React from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Package, 
-  ShoppingCart, 
-  Users, 
-  Settings, 
+import {
+  LayoutDashboard,
+  Package,
+  ShoppingCart,
+  Users,
+  Settings,
   LogOut,
   ChevronRight,
   Menu,
@@ -32,9 +32,9 @@ export default function AdminLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="h-screen overflow-hidden bg-gray-100 flex flex-col">
       {/* Mobile Header */}
-      <div className="lg:hidden bg-secondary text-white p-4 flex items-center justify-between">
+      <div className="lg:hidden bg-secondary text-white p-4 flex items-center justify-between shrink-0">
         <button onClick={() => setSidebarOpen(true)}>
           <Menu className="w-6 h-6" />
         </button>
@@ -42,10 +42,10 @@ export default function AdminLayout() {
         <div className="w-6" /> {/* Spacer */}
       </div>
 
-      <div className="flex">
+      <div className="flex flex-1 overflow-hidden">
         {/* Sidebar Overlay (Mobile) */}
         {sidebarOpen && (
-          <div 
+          <div
             className="fixed inset-0 bg-black/50 z-40 lg:hidden"
             onClick={() => setSidebarOpen(false)}
           />
@@ -56,6 +56,7 @@ export default function AdminLayout() {
           fixed lg:static inset-y-0 left-0 z-50
           w-64 bg-secondary text-white 
           transform transition-transform duration-300 ease-in-out
+          flex flex-col overflow-y-auto overflow-x-hidden
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}>
           <div className="flex flex-col h-full">
@@ -65,7 +66,7 @@ export default function AdminLayout() {
                 <NavLink to="/" className="text-xl font-serif font-bold text-primary">
                   Aradhya Gems
                 </NavLink>
-                <button 
+                <button
                   className="lg:hidden text-white/60 hover:text-white"
                   onClick={() => setSidebarOpen(false)}
                 >
@@ -85,8 +86,8 @@ export default function AdminLayout() {
                   onClick={() => setSidebarOpen(false)}
                   className={({ isActive }) => `
                     flex items-center gap-3 px-4 py-3 rounded-lg transition-colors
-                    ${isActive 
-                      ? 'bg-primary text-secondary font-medium' 
+                    ${isActive
+                      ? 'bg-primary text-secondary font-medium'
                       : 'text-white/70 hover:bg-white/10 hover:text-white'
                     }
                   `}
@@ -125,7 +126,7 @@ export default function AdminLayout() {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 min-h-screen">
+        <main className="flex-1 overflow-y-auto bg-gray-100 relative">
           <Outlet />
         </main>
       </div>

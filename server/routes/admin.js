@@ -201,20 +201,59 @@ router.get('/users/:id', asyncHandler(async (req, res) => {
 router.put('/users/:id', asyncHandler(async (req, res) => {
   const { role, isActive } = req.body;
 
-  const user = await User.findByIdAndUpdate(
-    req.params.id,
-    { role, isActive },
-    { new: true, runValidators: true }
-  );
+  // Find the user first to check their email
+  let user = await User.findById(req.params.id);
 
   if (!user) {
     return res.status(404).json({ success: false, message: 'User not found' });
   }
 
+  // Prevent demoting or deactivating the primary admin
+  if (user.email === 'psjivani001@gmail.com') {
+    if (role === 'customer' || isActive === false) {
+      return res.status(403).json({
+        success: false,
+        message: 'Action denied. The primary admin account cannot be downgraded or deactivated.'
+      });
+    }
+  }
+
+  // Proceed with update
+  user.role = role || user.role;
+  if (isActive !== undefined) user.isActive = isActive;
+
+  await user.save({ validateBeforeSave: false });
+
   res.json({
     success: true,
     message: 'User updated successfully',
     data: { user }
+  });
+}));
+
+// @desc    Delete user
+// @route   DELETE /api/admin/users/:id
+// @access  Private/Admin
+router.delete('/users/:id', asyncHandler(async (req, res) => {
+  const user = await User.findById(req.params.id);
+
+  if (!user) {
+    return res.status(404).json({ success: false, message: 'User not found' });
+  }
+
+  // Prevent deleting the primary admin
+  if (user.email === 'psjivani001@gmail.com') {
+    return res.status(403).json({
+      success: false,
+      message: 'Action denied. The primary admin account cannot be deleted.'
+    });
+  }
+
+  await User.deleteOne({ _id: user._id });
+
+  res.json({
+    success: true,
+    message: 'User deleted successfully'
   });
 }));
 

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { orderAPI } from '../services/api';
 
-export const useOrderStore = create((set, get) => ({
+export const useOrderStore = create((set) => ({
   orders: [],
   currentOrder: null,
   isLoading: false,

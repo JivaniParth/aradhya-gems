@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { 
-  Filter, 
-  X, 
-  ChevronDown, 
+import {
+  Filter,
+  X,
+  ChevronDown,
   ChevronUp,
-  Grid3X3, 
+  Grid3X3,
   LayoutGrid,
   SlidersHorizontal,
   Info,
@@ -16,13 +16,15 @@ import { Button } from '../components/ui/Button';
 import { Checkbox } from '../components/ui/Checkbox';
 import { TrustStrip } from '../components/common/TrustComponents';
 import { productAPI } from '../services/api';
-import { 
-  categories, 
-  materials, 
+import { useCurrencyStore } from '../store/useCurrencyStore';
+import CurrencySelector from '../components/common/CurrencySelector';
+import {
+  categories,
+  materials,
   occasions,
   priceRanges,
   getCategoryBySlug,
-  formatPrice 
+  formatPrice
 } from '../data/constants';
 
 const SORT_OPTIONS = [
@@ -48,13 +50,19 @@ const SORT_MAP = {
 function CategoryHeader({ category, totalProducts }) {
   if (!category) {
     return (
-      <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-serif font-bold text-secondary">
-          All Jewelry
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Explore our complete collection of {totalProducts} handcrafted pieces
-        </p>
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-serif font-bold text-secondary">
+            All Jewelry
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Explore our complete collection of {totalProducts} handcrafted pieces
+          </p>
+        </div>
+        <div className="shrink-0 flex items-center gap-3 bg-white p-2 rounded-lg border border-gray-100 shadow-sm">
+          <span className="text-sm text-gray-500 font-medium ml-2">Display pricing in:</span>
+          <CurrencySelector />
+        </div>
       </div>
     );
   }
@@ -68,11 +76,21 @@ function CategoryHeader({ category, totalProducts }) {
         <span>/</span>
         <span className="text-secondary">{category.name}</span>
       </div>
-      <h1 className="text-2xl md:text-3xl font-serif font-bold text-secondary">
-        {category.name}
-      </h1>
-      <p className="text-muted-foreground mt-1">{category.description}</p>
-      
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-serif font-bold text-secondary">
+            {category.name}
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            {category.description || `Explore our beautiful collection of ${category.name.toLowerCase()}`}
+          </p>
+        </div>
+        <div className="shrink-0 flex items-center gap-3">
+          <span className="text-sm text-gray-500 font-medium">Currency:</span>
+          <CurrencySelector />
+        </div>
+      </div>
+
       {/* Why this category exists - helps decision making */}
       <div className="mt-4 p-4 bg-primary/5 rounded-lg border border-primary/10">
         <div className="flex items-start gap-3">
@@ -86,12 +104,13 @@ function CategoryHeader({ category, totalProducts }) {
   );
 }
 
+
 // ========================================
 // ACTIVE FILTERS BAR
 // ========================================
 function ActiveFilters({ filters, onRemove, onClearAll }) {
-  const activeFilters = Object.entries(filters).filter(([key, value]) => value);
-  
+  const activeFilters = Object.entries(filters).filter(([, value]) => value);
+
   if (activeFilters.length === 0) return null;
 
   const getFilterLabel = (key, value) => {
@@ -165,8 +184,14 @@ function FilterSection({ title, children, defaultOpen = true }) {
 // ========================================
 export default function ShopPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { fetchRates } = useCurrencyStore();
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [gridCols, setGridCols] = useState(3);
+
+  // Fetch currency rates once when store mounts
+  useEffect(() => {
+    fetchRates();
+  }, [fetchRates]);
 
   // API state
   const [products, setProducts] = useState([]);
@@ -391,7 +416,7 @@ export default function ShopPage() {
         <p className="text-xs text-muted-foreground mb-3">
           Our experts can help you find the perfect piece.
         </p>
-        <Link 
+        <Link
           to="/contact"
           className="text-sm text-primary font-medium hover:underline"
         >
@@ -422,9 +447,9 @@ export default function ShopPage() {
           {/* Main Content */}
           <main className="flex-1">
             {/* Category Header */}
-            <CategoryHeader 
-              category={categoryInfo} 
-              totalProducts={totalProducts} 
+            <CategoryHeader
+              category={categoryInfo}
+              totalProducts={totalProducts}
             />
 
             {/* Search Results */}
@@ -443,7 +468,7 @@ export default function ShopPage() {
             )}
 
             {/* Active Filters */}
-            <ActiveFilters 
+            <ActiveFilters
               filters={activeFilters}
               onRemove={removeFilter}
               onClearAll={clearAllFilters}
@@ -522,11 +547,10 @@ export default function ShopPage() {
 
             {/* Products Grid */}
             {!loading && !error && products.length > 0 && (
-              <div className={`grid gap-4 md:gap-6 ${
-                gridCols === 2 
-                  ? 'grid-cols-2 md:grid-cols-2 lg:grid-cols-2' 
-                  : 'grid-cols-2 md:grid-cols-2 lg:grid-cols-3'
-              }`}>
+              <div className={`grid gap-4 md:gap-6 ${gridCols === 2
+                ? 'grid-cols-2 md:grid-cols-2 lg:grid-cols-2'
+                : 'grid-cols-2 md:grid-cols-2 lg:grid-cols-3'
+                }`}>
                 {products.map((product) => (
                   <ProductCard key={product._id} product={product} />
                 ))}
@@ -552,7 +576,7 @@ export default function ShopPage() {
       {/* Mobile Filters Drawer */}
       {mobileFiltersOpen && (
         <>
-          <div 
+          <div
             className="fixed inset-0 bg-black/50 z-50 lg:hidden"
             onClick={() => setMobileFiltersOpen(false)}
           />
@@ -573,14 +597,14 @@ export default function ShopPage() {
               <FilterSidebarContent />
             </div>
             <div className="sticky bottom-0 bg-white border-t p-4 flex gap-3">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="flex-1"
                 onClick={clearAllFilters}
               >
                 Clear All
               </Button>
-              <Button 
+              <Button
                 className="flex-1"
                 onClick={() => setMobileFiltersOpen(false)}
               >
