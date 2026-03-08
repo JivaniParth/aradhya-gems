@@ -108,13 +108,6 @@ export default function LoginPage() {
               Create one
             </Link>
           </div>
-
-          {/* Demo Credentials */}
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg text-sm">
-            <p className="font-medium text-gray-700 mb-2">Demo Credentials:</p>
-            <p className="text-gray-600">Admin: admin@aradhyagems.com / admin123</p>
-            <p className="text-gray-600">Customer: customer@example.com / customer123</p>
-          </div>
         </div>
       </div>
     </div>
