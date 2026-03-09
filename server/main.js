@@ -38,36 +38,35 @@ const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
   .split(',')
   .map(s => s.trim().replace(/\/$/, '')); // remove trailing slashes
 
-  app.set('trust proxy', 1); // trust first proxy (for correct IP in rate limiting)
+app.set('trust proxy', 1); // trust first proxy (for correct IP in rate limiting)
 
-  app.use(cors());
-// app.use(cors({
-//   origin: function (origin, callback) {
-//     // Allow requests with no origin (server-to-server, Postman, mobile apps, etc.)
-//     if (!origin) return callback(null, true);
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (server-to-server, Postman, mobile apps, etc.)
+    if (!origin) return callback(null, true);
 
-//     // Check strict exact match
-//     if (allowedOrigins.includes(origin)) {
-//       return callback(null, true);
-//     }
+    // Check strict exact match
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
 
-//     // Check if the incoming origin is just the "www." version of an allowed origin
-//     const originWithoutWww = origin.replace('://www.', '://');
-//     if (allowedOrigins.includes(originWithoutWww)) {
-//       return callback(null, true);
-//     }
+    // Check if the incoming origin is just the "www." version of an allowed origin
+    const originWithoutWww = origin.replace('://www.', '://');
+    if (allowedOrigins.includes(originWithoutWww)) {
+      return callback(null, true);
+    }
 
-//     // Check if the incoming origin is a Vercel preview URL of the main domain
-//     if (origin.endsWith('.vercel.app')) {
-//        return callback(null, true); 
-//     }
+    // Check if the incoming origin is a Vercel preview URL of the main domain
+    if (origin.endsWith('.vercel.app')) {
+      return callback(null, true);
+    }
 
-//     callback(new Error(`Not allowed by CORS: ${origin}`));
-//   },
-//   credentials: true,
-//   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-//   allowedHeaders: ['Content-Type', 'Authorization']
-// }));
+    callback(new Error(`Not allowed by CORS: ${origin}`));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 // Security headers
 app.use(helmet());
