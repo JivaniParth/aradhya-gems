@@ -38,6 +38,8 @@ const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
   .split(',')
   .map(s => s.trim().replace(/\/$/, '')); // remove trailing slashes
 
+  app.set('trust proxy', 1); // trust first proxy (for correct IP in rate limiting)
+
   app.use(cors());
 // app.use(cors({
 //   origin: function (origin, callback) {
