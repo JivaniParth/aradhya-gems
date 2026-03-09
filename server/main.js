@@ -36,16 +36,30 @@ connectDB();
 // CORS configuration
 const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
   .split(',')
-  .map(s => s.trim());
+  .map(s => s.trim().replace(/\/$/, '')); // remove trailing slashes
 
 app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (server-to-server, Postman, mobile apps, etc.)
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
+    if (!origin) return callback(null, true);
+
+    // Check strict exact match
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
     }
+
+    // Check if the incoming origin is just the "www." version of an allowed origin
+    const originWithoutWww = origin.replace('://www.', '://');
+    if (allowedOrigins.includes(originWithoutWww)) {
+      return callback(null, true);
+    }
+
+    // Check if the incoming origin is a Vercel preview URL of the main domain
+    if (origin.endsWith('.vercel.app')) {
+       return callback(null, true); 
+    }
+
+    callback(new Error(`Not allowed by CORS: ${origin}`));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
