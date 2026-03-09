@@ -7,7 +7,10 @@ import {
   X,
   Heart,
   User,
-  LogOut
+  LogOut,
+  ChevronRight,
+  Settings,
+  Loader2
 } from 'lucide-react';
 import { useCartStore } from '../../store/useCartStore';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -82,7 +85,7 @@ export default function Navbar() {
   };
 
   const handleSearchSubmit = (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     if (searchQuery.trim()) {
       setSearchOpen(false);
       navigate(`/shop?search=${encodeURIComponent(searchQuery)}`);
