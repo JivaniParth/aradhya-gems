@@ -6,8 +6,8 @@ import ProductCard from '../components/shop/ProductCard';
 import { WhyBuyFromUs, TrustStrip } from '../components/common/TrustComponents';
 import HeroCarousel from '../components/common/HeroCarousel';
 import { productAPI } from '../services/api';
-import { 
-  categories, 
+import {
+  categories,
   occasions
 } from '../data/constants';
 
@@ -21,18 +21,18 @@ function ProductCarousel({ products, title, subtitle, viewAllLink, loading }) {
   const scroll = (direction) => {
     const container = scrollRef.current;
     if (!container) return;
-    
+
     const cardWidth = container.firstChild?.offsetWidth || 280;
     const gap = 24;
     const scrollAmount = (cardWidth + gap) * (direction === 'left' ? -1 : 1);
-    
+
     container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
   };
 
   const handleScroll = () => {
     const container = scrollRef.current;
     if (!container) return;
-    
+
     const cardWidth = container.firstChild?.offsetWidth || 280;
     const gap = 24;
     const index = Math.round(container.scrollLeft / (cardWidth + gap));
@@ -50,13 +50,13 @@ function ProductCarousel({ products, title, subtitle, viewAllLink, loading }) {
           </div>
           {!loading && products.length > 0 && (
             <div className="hidden md:flex items-center gap-2">
-              <button 
+              <button
                 onClick={() => scroll('left')}
                 className="p-2 rounded-full border border-gray-200 hover:border-primary hover:text-primary transition-colors"
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
-              <button 
+              <button
                 onClick={() => scroll('right')}
                 className="p-2 rounded-full border border-gray-200 hover:border-primary hover:text-primary transition-colors"
               >
@@ -76,14 +76,14 @@ function ProductCarousel({ products, title, subtitle, viewAllLink, loading }) {
         {/* Carousel */}
         {!loading && products.length > 0 && (
           <>
-            <div 
+            <div
               ref={scrollRef}
               onScroll={handleScroll}
               className="flex gap-4 md:gap-6 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-4"
               style={{ scrollSnapType: 'x mandatory' }}
             >
               {products.map((product) => (
-                <div 
+                <div
                   key={product._id}
                   className="flex-shrink-0 w-[70%] sm:w-[45%] md:w-[30%] lg:w-[23%] snap-start"
                 >
@@ -97,9 +97,8 @@ function ProductCarousel({ products, title, subtitle, viewAllLink, loading }) {
               {products.slice(0, Math.min(products.length, 8)).map((_, index) => (
                 <button
                   key={index}
-                  className={`w-2 h-2 rounded-full transition-colors ${
-                    index === activeIndex ? 'bg-primary' : 'bg-gray-300'
-                  }`}
+                  className={`w-2 h-2 rounded-full transition-colors ${index === activeIndex ? 'bg-primary' : 'bg-gray-300'
+                    }`}
                   onClick={() => {
                     const container = scrollRef.current;
                     if (!container) return;
@@ -116,7 +115,7 @@ function ProductCarousel({ products, title, subtitle, viewAllLink, loading }) {
         {/* View All Link */}
         {viewAllLink && !loading && products.length > 0 && (
           <div className="text-center mt-8">
-            <Link 
+            <Link
               to={viewAllLink}
               className="inline-flex items-center gap-2 text-primary font-medium hover:underline"
             >
@@ -132,6 +131,26 @@ function ProductCarousel({ products, title, subtitle, viewAllLink, loading }) {
 // ========================================
 // CATEGORY GRID (Intent-based navigation)
 // ========================================
+function CategoryCard({ category }) {
+  return (
+    <Link
+      to={`/shop?category=${category.slug}`}
+      className="group block relative aspect-[3/4] rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-300"
+    >
+      <img
+        src={category.image}
+        alt={category.name}
+        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+      <div className="absolute bottom-0 left-0 right-0 p-4 md:p-5 text-white">
+        <h3 className="text-lg md:text-xl font-serif font-semibold">{category.name}</h3>
+        <p className="text-xs md:text-sm text-white/80 mt-1 line-clamp-2">{category.description}</p>
+      </div>
+    </Link>
+  );
+}
+
 function CategoryGrid() {
   return (
     <section className="py-12 md:py-16 bg-accent/30">
@@ -139,23 +158,134 @@ function CategoryGrid() {
         <h2 className="text-2xl md:text-3xl font-serif font-bold text-secondary text-center mb-8">
           Shop by Category
         </h2>
-        
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-          {categories.map((category) => (
-            <Link
+
+        {/* 3+2 Centered Layout using Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4 md:gap-6 mb-4 md:mb-6">
+          {categories.map((category, index) => (
+            <div
               key={category.id}
-              to={`/shop?category=${category.slug}`}
-              className="group relative aspect-[3/4] rounded-lg overflow-hidden"
+              className={`col-span-1 md:col-span-2 ${index === 3 ? 'md:col-start-2' : ''
+                }`}
             >
-              <img
-                src={category.image}
-                alt={category.name}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-              <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
-                <h3 className="text-lg md:text-xl font-serif font-semibold">{category.name}</h3>
-                <p className="text-xs md:text-sm text-white/80 mt-1 line-clamp-2">{category.description}</p>
+              <CategoryCard category={category} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+
+// ========================================
+// OCCASION STRIP (Emotional navigation)
+// ========================================
+
+
+
+// Custom SVG icons for each occasion (replaces emojis)
+const occasionIcons = {
+  'daily-wear': (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+    </svg>
+  ),
+  'wedding': (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
+      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+      <path d="M12 5.67V12" />
+    </svg>
+  ),
+  'anniversary': (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
+      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+    </svg>
+  ),
+  'gifting': (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
+      <rect x="3" y="8" width="18" height="13" rx="2" />
+      <path d="M12 8v13" />
+      <path d="M3 12h18" />
+      <path d="M12 8c-2-3-6-3.5-6-1s4 3 6 1" />
+      <path d="M12 8c2-3 6-3.5 6-1s-4 3-6 1" />
+    </svg>
+  ),
+  'office-wear': (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
+      <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+      <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
+      <circle cx="12" cy="14" r="0.5" fill="currentColor" />
+    </svg>
+  ),
+  'party': (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+      <circle cx="5" cy="5" r="1" fill="currentColor" />
+      <circle cx="20" cy="4" r="1" fill="currentColor" />
+    </svg>
+  )
+};
+
+function OccasionStrip() {
+  return (
+    <section
+      className="py-10 md:py-14 relative overflow-hidden"
+      style={{ background: 'linear-gradient(135deg, #fdf8f0 0%, #fef6e8 50%, #fdf0e0 100%)' }}
+    >
+      {/* Decorative shimmer overlay */}
+      <div
+        className="absolute inset-0 opacity-30 pointer-events-none"
+        style={{
+          background: 'radial-gradient(ellipse at 20% 50%, rgba(212,175,55,0.15) 0%, transparent 50%), radial-gradient(ellipse at 80% 50%, rgba(212,175,55,0.1) 0%, transparent 50%)'
+        }}
+      />
+
+      <div className="container mx-auto px-4 relative z-10">
+        <p className="text-center text-sm md:text-base font-serif font-semibold text-secondary uppercase tracking-[0.2em] mb-8 md:mb-10">
+          Shopping for an Occasion?
+        </p>
+
+        <div className="flex justify-center gap-4 md:gap-8 flex-wrap">
+          {occasions.map((occasion) => (
+            <Link
+              key={occasion.id}
+              to={`/shop?occasion=${occasion.id}`}
+              className="group relative flex flex-col items-center gap-3 p-4 md:p-5 rounded-2xl
+                         bg-white/80 backdrop-blur-sm border border-amber-100/60
+                         hover:bg-white hover:border-amber-200
+                         hover:shadow-[0_8px_30px_rgba(212,175,55,0.15)]
+                         transition-all duration-300 ease-out
+                         hover:-translate-y-1 min-w-[90px] md:min-w-[110px]"
+            >
+              {/* Icon with gold gradient ring */}
+              <div
+                className="relative w-14 h-14 md:w-16 md:h-16 flex items-center justify-center
+                            rounded-full bg-gradient-to-br from-amber-50 to-amber-100
+                            border border-amber-200/50
+                            group-hover:from-amber-100 group-hover:to-amber-200/60
+                            group-hover:shadow-[0_0_20px_rgba(212,175,55,0.25)]
+                            transition-all duration-300"
+              >
+                <span className="text-amber-700 group-hover:text-amber-800 transition-colors duration-300">
+                  {occasionIcons[occasion.id]}
+                </span>
+              </div>
+
+              {/* Name */}
+              <span className="text-xs md:text-sm font-semibold text-secondary tracking-wide">
+                {occasion.name}
+              </span>
+
+              {/* Hover tooltip description */}
+              <div className="absolute -bottom-10 left-1/2 -translate-x-1/2
+                              opacity-0 group-hover:opacity-100 group-hover:-bottom-9
+                              transition-all duration-300 pointer-events-none z-20
+                              whitespace-nowrap">
+                <div className="bg-secondary text-white text-[11px] px-3 py-1.5 rounded-lg shadow-lg relative">
+                  {occasion.description}
+                  <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-secondary rotate-45" />
+                </div>
               </div>
             </Link>
           ))}
@@ -165,33 +295,7 @@ function CategoryGrid() {
   );
 }
 
-// ========================================
-// OCCASION STRIP (Emotional navigation)
-// ========================================
-function OccasionStrip() {
-  return (
-    <section className="py-8 border-y border-gray-100">
-      <div className="container mx-auto px-4">
-        <p className="text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-6">
-          Shopping for an Occasion?
-        </p>
-        
-        <div className="flex justify-center gap-3 md:gap-6 flex-wrap">
-          {occasions.map((occasion) => (
-            <Link
-              key={occasion.id}
-              to={`/shop?occasion=${occasion.id}`}
-              className="flex flex-col items-center gap-2 p-3 md:p-4 rounded-xl hover:bg-gray-50 transition-colors"
-            >
-              <span className="text-2xl md:text-3xl">{occasion.icon}</span>
-              <span className="text-xs md:text-sm font-medium text-secondary">{occasion.name}</span>
-            </Link>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
+
 
 // ========================================
 // QUICK ACTIONS - Decision shortcuts
@@ -224,7 +328,7 @@ function QuickActions() {
         <h2 className="text-2xl md:text-3xl font-serif font-bold text-secondary text-center mb-8">
           Quick Shop
         </h2>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
           {actions.map((action, index) => (
             <Link
@@ -278,10 +382,10 @@ export default function HomePage() {
     <div className="flex flex-col">
       {/* Trust Strip - Above the fold */}
       <TrustStrip />
-      
+
       {/* Hero Carousel - Dynamic sliding banner */}
       <HeroCarousel />
-      
+
       {/* New Arrivals - For repeat users */}
       <ProductCarousel
         products={newArrivals}
@@ -290,13 +394,13 @@ export default function HomePage() {
         viewAllLink="/shop?sort=newest"
         loading={loading}
       />
-      
+
       {/* Occasion Navigation - Emotional path */}
       <OccasionStrip />
-      
+
       {/* Category Grid - Rational path */}
       <CategoryGrid />
-      
+
       {/* Best Sellers - Social proof */}
       <ProductCarousel
         products={bestSellers}
@@ -305,13 +409,13 @@ export default function HomePage() {
         viewAllLink="/shop?sort=popular"
         loading={loading}
       />
-      
+
       {/* Quick Actions - Decision shortcuts */}
       <QuickActions />
-      
+
       {/* Why Buy From Us - Trust for new users */}
       <WhyBuyFromUs />
-      
+
       {/* Final CTA */}
       <section className="py-16 bg-secondary text-white text-center">
         <div className="container mx-auto px-4">
@@ -319,7 +423,7 @@ export default function HomePage() {
             Need Help Choosing?
           </h2>
           <p className="text-gray-300 max-w-xl mx-auto mb-6">
-            Our jewelry experts are here to help. Get personalized recommendations 
+            Our jewelry experts are here to help. Get personalized recommendations
             based on your occasion, budget, and style preferences.
           </p>
           <div className="flex flex-wrap justify-center gap-3">

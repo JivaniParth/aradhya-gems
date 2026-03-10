@@ -34,6 +34,7 @@ import WishlistPage from './pages/WishlistPage';
 // Admin Pages
 import AdminDashboard from './pages/admin/AdminDashboard';
 import ProductManagement from './pages/admin/ProductManagement';
+import ProductForm from './pages/admin/ProductForm';
 import OrderManagement from './pages/admin/OrderManagement';
 import CustomerManagement from './pages/admin/CustomerManagement';
 import AdminSettings from './pages/admin/AdminSettings';
@@ -117,8 +118,8 @@ function App() {
         }>
           <Route index element={<AdminDashboard />} />
           <Route path="products" element={<ProductManagement />} />
-          <Route path="products/new" element={<ProductManagement />} />
-          <Route path="products/:id/edit" element={<ProductManagement />} />
+          <Route path="products/new" element={<ProductForm />} />
+          <Route path="products/:id/edit" element={<ProductForm />} />
           <Route path="orders" element={<OrderManagement />} />
           <Route path="customers" element={<CustomerManagement />} />
           <Route path="settings" element={<AdminSettings />} />

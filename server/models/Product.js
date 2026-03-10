@@ -97,7 +97,7 @@ const productSchema = new mongoose.Schema({
   category: {
     type: String,
     required: [true, 'Category is required'],
-    enum: ['Necklaces', 'Earrings', 'Rings', 'Bracelets']
+    enum: ['Necklaces', 'Earrings', 'Rings', 'Bracelets', 'Pie Cut Diamond Jewelry']
   },
   categorySlug: {
     type: String,

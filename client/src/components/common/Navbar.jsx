@@ -144,8 +144,8 @@ export default function Navbar() {
               <Link to="/shop?category=rings" className="text-sm font-medium text-secondary hover:text-primary transition-colors">
                 Rings
               </Link>
-              <Link to="/shop?category=pie-cut-diamonds" className="text-sm font-medium text-secondary hover:text-primary transition-colors">
-                Pie Cut Diamonds
+              <Link to="/shop?category=pie-cut-diamond-jewelry" className="text-sm font-medium text-secondary hover:text-primary transition-colors">
+                Pie Cut Diamond Jewelry
               </Link>
               <Link to="/about" className="text-sm font-medium text-secondary hover:text-primary transition-colors">
                 Our Story
