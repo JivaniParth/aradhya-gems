@@ -15,10 +15,10 @@ const slides = [
   },
   {
     id: 2,
-    badge: 'Certified Diamonds',
+    badge: 'Pie Cut Diamond Jewelry',
     title: 'Brilliance You Can Trust',
     subtitle: 'Every diamond comes with international certification. Premium quality at transparent prices.',
-    primaryBtn: { text: 'Explore Diamonds', link: '/shop?material=diamond' },
+    primaryBtn: { text: 'Explore Pie Cut Diamond Jewelry', link: '/shop?category=pie-cut-diamond-jewelry' },
     secondaryBtn: { text: 'Learn More', link: '/about' },
     image: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?q=80&w=1920&auto=format&fit=crop'
   },
@@ -65,7 +65,7 @@ export default function HeroCarousel() {
   // Auto-advance slides
   useEffect(() => {
     if (isPaused) return;
-    
+
     const timer = setInterval(() => {
       nextSlide();
     }, 5000);
@@ -76,7 +76,7 @@ export default function HeroCarousel() {
   const slide = slides[currentSlide];
 
   return (
-    <section 
+    <section
       className="relative bg-secondary text-white overflow-hidden"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
@@ -96,9 +96,9 @@ export default function HeroCarousel() {
       <div className="relative z-20 container mx-auto px-4 py-16 md:py-20 lg:py-24">
         <div className="max-w-2xl">
           {/* Badge */}
-          <div 
+          <div
             className="inline-block mb-4 transition-all duration-500 transform"
-            style={{ 
+            style={{
               opacity: isAnimating ? 0 : 1,
               transform: isAnimating ? 'translateY(-10px)' : 'translateY(0)'
             }}
@@ -109,9 +109,9 @@ export default function HeroCarousel() {
           </div>
 
           {/* Title */}
-          <h1 
+          <h1
             className="text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-serif font-bold mb-4 md:mb-6 leading-tight transition-all duration-500"
-            style={{ 
+            style={{
               opacity: isAnimating ? 0 : 1,
               transform: isAnimating ? 'translateY(20px)' : 'translateY(0)'
             }}
@@ -120,9 +120,9 @@ export default function HeroCarousel() {
           </h1>
 
           {/* Subtitle */}
-          <p 
+          <p
             className="text-gray-300 text-base md:text-lg mb-6 md:mb-8 max-w-xl transition-all duration-500 delay-100"
-            style={{ 
+            style={{
               opacity: isAnimating ? 0 : 1,
               transform: isAnimating ? 'translateY(20px)' : 'translateY(0)'
             }}
@@ -131,9 +131,9 @@ export default function HeroCarousel() {
           </p>
 
           {/* Buttons */}
-          <div 
+          <div
             className="flex flex-wrap gap-3 md:gap-4 transition-all duration-500 delay-150"
-            style={{ 
+            style={{
               opacity: isAnimating ? 0 : 1,
               transform: isAnimating ? 'translateY(20px)' : 'translateY(0)'
             }}
@@ -144,9 +144,9 @@ export default function HeroCarousel() {
               </Button>
             </Link>
             <Link to={slide.secondaryBtn.link}>
-              <Button 
-                variant="outline" 
-                size="lg" 
+              <Button
+                variant="outline"
+                size="lg"
                 className="text-white border-white hover:bg-white/10 text-sm md:text-base"
               >
                 {slide.secondaryBtn.text}
@@ -179,11 +179,10 @@ export default function HeroCarousel() {
           <button
             key={index}
             onClick={() => goToSlide(index)}
-            className={`transition-all duration-300 rounded-full ${
-              index === currentSlide 
-                ? 'w-8 h-2 bg-primary' 
+            className={`transition-all duration-300 rounded-full ${index === currentSlide
+                ? 'w-8 h-2 bg-primary'
                 : 'w-2 h-2 bg-white/40 hover:bg-white/60'
-            }`}
+              }`}
             aria-label={`Go to slide ${index + 1}`}
           />
         ))}
@@ -191,9 +190,9 @@ export default function HeroCarousel() {
 
       {/* Progress Bar */}
       <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/10 z-30">
-        <div 
+        <div
           className="h-full bg-primary transition-all duration-300"
-          style={{ 
+          style={{
             width: `${((currentSlide + 1) / slides.length) * 100}%`
           }}
         />
