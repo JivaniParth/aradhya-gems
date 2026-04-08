@@ -4,6 +4,7 @@ const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const Order = require('../models/Order');
 const Product = require('../models/Product');
+const Category = require('../models/Category');
 const { protect, authorize } = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/error');
 
@@ -332,6 +333,113 @@ router.get('/inventory', asyncHandler(async (req, res) => {
   res.json({
     success: true,
     data: { products, summary }
+  });
+}));
+
+// @desc    Get all categories (flat list for admin tree view)
+// @route   GET /api/admin/categories
+// @access  Private/Admin
+router.get('/categories', asyncHandler(async (req, res) => {
+  const categories = await Category.find()
+    .sort({ sortOrder: 1, name: 1 })
+    .populate('parentCategory', 'name slug');
+
+  res.json({
+    success: true,
+    data: { categories }
+  });
+}));
+
+// @desc    Create category
+// @route   POST /api/admin/categories
+// @access  Private/Admin
+router.post('/categories', asyncHandler(async (req, res) => {
+  const { name, slug, description, image, parentCategory, sortOrder,
+    seoTitle, seoDescription, whyExists } = req.body;
+
+  if (!name) {
+    return res.status(400).json({ success: false, message: 'Category name is required' });
+  }
+
+  const categorySlug = slug || name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
+  const category = await Category.create({
+    name,
+    slug: categorySlug,
+    description,
+    image,
+    parentCategory: parentCategory || null,
+    sortOrder: sortOrder || 0,
+    seoTitle,
+    seoDescription,
+    whyExists
+  });
+
+  res.status(201).json({
+    success: true,
+    message: 'Category created successfully',
+    data: { category }
+  });
+}));
+
+// @desc    Update category
+// @route   PUT /api/admin/categories/:id
+// @access  Private/Admin
+router.put('/categories/:id', asyncHandler(async (req, res) => {
+  let category = await Category.findById(req.params.id);
+
+  if (!category) {
+    return res.status(404).json({ success: false, message: 'Category not found' });
+  }
+
+  // Prevent setting parentCategory to self
+  if (req.body.parentCategory && req.body.parentCategory === req.params.id) {
+    return res.status(400).json({ success: false, message: 'Category cannot be its own parent' });
+  }
+
+  const allowed = ['name', 'slug', 'description', 'image', 'parentCategory',
+    'sortOrder', 'seoTitle', 'seoDescription', 'whyExists', 'isActive'];
+  allowed.forEach(field => {
+    if (req.body[field] !== undefined) category[field] = req.body[field];
+  });
+
+  // If parentCategory is explicitly set to empty string or null, clear it
+  if (req.body.parentCategory === '' || req.body.parentCategory === null) {
+    category.parentCategory = null;
+  }
+
+  await category.save();
+
+  res.json({
+    success: true,
+    message: 'Category updated successfully',
+    data: { category }
+  });
+}));
+
+// @desc    Delete category (soft delete)
+// @route   DELETE /api/admin/categories/:id
+// @access  Private/Admin
+router.delete('/categories/:id', asyncHandler(async (req, res) => {
+  const category = await Category.findById(req.params.id);
+
+  if (!category) {
+    return res.status(404).json({ success: false, message: 'Category not found' });
+  }
+
+  // Soft delete
+  category.isActive = false;
+  await category.save();
+
+  // Also deactivate children
+  await Category.updateMany(
+    { parentCategory: category._id },
+    { isActive: false }
+  );
+
+  res.json({
+    success: true,
+    message: 'Category deleted successfully'
   });
 }));
 

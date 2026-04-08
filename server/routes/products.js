@@ -26,9 +26,26 @@ router.get('/', asyncHandler(async (req, res) => {
   // Build query
   let query = { isActive: true };
 
-  // Category filter
+  // Category filter — recursively include sub-category products
   if (category) {
-    query.categorySlug = category.toLowerCase();
+    const slugLower = category.toLowerCase();
+    // Find the selected category
+    const selectedCat = await Category.findOne({ slug: slugLower, isActive: true });
+    if (selectedCat) {
+      // Recursively collect all descendant slugs
+      const allSlugs = [slugLower];
+      const collectChildSlugs = async (parentId) => {
+        const children = await Category.find({ parentCategory: parentId, isActive: true });
+        for (const child of children) {
+          allSlugs.push(child.slug);
+          await collectChildSlugs(child._id);
+        }
+      };
+      await collectChildSlugs(selectedCat._id);
+      query.categorySlug = { $in: allSlugs };
+    } else {
+      query.categorySlug = slugLower;
+    }
   }
 
   // Material filter
@@ -135,29 +152,48 @@ router.get('/featured', asyncHandler(async (req, res) => {
   });
 }));
 
-// @desc    Get categories with product counts
+// @desc    Get categories as nested hierarchy
 // @route   GET /api/products/categories
 // @access  Public
 router.get('/categories', asyncHandler(async (req, res) => {
-  const categories = await Category.find({ isActive: true }).sort({ sortOrder: 1 });
+  const allCategories = await Category.find({ isActive: true }).sort({ sortOrder: 1 });
 
   // Get product counts for each category
-  const categoriesWithCounts = await Promise.all(
-    categories.map(async (cat) => {
+  const catsWithCounts = await Promise.all(
+    allCategories.map(async (cat) => {
       const count = await Product.countDocuments({
         categorySlug: cat.slug,
         isActive: true
       });
       return {
         ...cat.toObject(),
-        productCount: count
+        productCount: count,
+        children: []
       };
     })
   );
 
+  // Build parent → children hierarchy
+  const catMap = {};
+  catsWithCounts.forEach(c => { catMap[c._id.toString()] = c; });
+
+  const roots = [];
+  catsWithCounts.forEach(c => {
+    if (c.parentCategory) {
+      const parent = catMap[c.parentCategory.toString()];
+      if (parent) {
+        parent.children.push(c);
+      } else {
+        roots.push(c); // orphan → treat as root
+      }
+    } else {
+      roots.push(c);
+    }
+  });
+
   res.json({
     success: true,
-    data: { categories: categoriesWithCounts }
+    data: { categories: roots }
   });
 }));
 

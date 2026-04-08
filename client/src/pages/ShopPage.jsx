@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, useParams, Link } from 'react-router-dom';
 import {
   Filter,
   X,
@@ -15,7 +15,7 @@ import ProductCard from '../components/shop/ProductCard';
 import { Button } from '../components/ui/Button';
 import { Checkbox } from '../components/ui/Checkbox';
 import { TrustStrip } from '../components/common/TrustComponents';
-import { productAPI } from '../services/api';
+import { productAPI, categoryAPI } from '../services/api';
 import { useCurrencyStore } from '../store/useCurrencyStore';
 import CurrencySelector from '../components/common/CurrencySelector';
 import {
@@ -47,7 +47,7 @@ const SORT_MAP = {
 // ========================================
 // CATEGORY HEADER - SEO & Context
 // ========================================
-function CategoryHeader({ category, totalProducts }) {
+function CategoryHeader({ category, parentCategory, totalProducts }) {
   if (!category) {
     return (
       <div className="mb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
@@ -73,6 +73,12 @@ function CategoryHeader({ category, totalProducts }) {
         <Link to="/" className="hover:text-primary">Home</Link>
         <span>/</span>
         <Link to="/shop" className="hover:text-primary">Shop</Link>
+        {parentCategory && (
+          <>
+            <span>/</span>
+            <Link to={`/shop/${parentCategory.slug}`} className="hover:text-primary">{parentCategory.name}</Link>
+          </>
+        )}
         <span>/</span>
         <span className="text-secondary">{category.name}</span>
       </div>
@@ -92,14 +98,16 @@ function CategoryHeader({ category, totalProducts }) {
       </div>
 
       {/* Why this category exists - helps decision making */}
-      <div className="mt-4 p-4 bg-primary/5 rounded-lg border border-primary/10">
-        <div className="flex items-start gap-3">
-          <Info className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm text-secondary">{category.whyExists}</p>
+      {category.whyExists && (
+        <div className="mt-4 p-4 bg-primary/5 rounded-lg border border-primary/10">
+          <div className="flex items-start gap-3">
+            <Info className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm text-secondary">{category.whyExists}</p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -184,14 +192,31 @@ function FilterSection({ title, children, defaultOpen = true }) {
 // ========================================
 export default function ShopPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { categorySlug, subCategorySlug } = useParams();
   const { fetchRates } = useCurrencyStore();
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [gridCols, setGridCols] = useState(3);
+
+  // Categories from API for sidebar + lookup
+  const [apiCategories, setApiCategories] = useState([]);
 
   // Fetch currency rates once when store mounts
   useEffect(() => {
     fetchRates();
   }, [fetchRates]);
+
+  // Fetch categories from API
+  useEffect(() => {
+    const fetchCats = async () => {
+      try {
+        const { data } = await categoryAPI.getHierarchy();
+        setApiCategories(data.data.categories || []);
+      } catch {
+        setApiCategories([]);
+      }
+    };
+    fetchCats();
+  }, []);
 
   // API state
   const [products, setProducts] = useState([]);
@@ -199,8 +224,9 @@ export default function ShopPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Get filter values from URL
-  const selectedCategory = searchParams.get('category') || '';
+  // Resolve category slug: prioritize route params over query params
+  const resolvedSlug = subCategorySlug || categorySlug || searchParams.get('category') || '';
+  const selectedCategory = resolvedSlug;
   const selectedMaterial = searchParams.get('material') || '';
   const selectedOccasion = searchParams.get('occasion') || '';
   const selectedMinPrice = searchParams.get('minPrice') ? parseInt(searchParams.get('minPrice')) : undefined;
@@ -208,8 +234,30 @@ export default function ShopPage() {
   const searchQuery = searchParams.get('search') || '';
   const sortBy = searchParams.get('sort') || 'popular';
 
-  // Get category info
-  const categoryInfo = selectedCategory ? getCategoryBySlug(selectedCategory) : null;
+  // Lookup category info from API hierarchy (supports nested)
+  const findCategoryBySlug = (slug, cats) => {
+    for (const cat of cats) {
+      if (cat.slug === slug) return cat;
+      if (cat.children) {
+        const found = findCategoryBySlug(slug, cat.children);
+        if (found) return found;
+      }
+    }
+    // Fallback to constants
+    return categories.find(c => c.slug === slug) || null;
+  };
+
+  // Find parent category for breadcrumb
+  const findParentOfSlug = (slug, cats) => {
+    for (const cat of cats) {
+      if (cat.children?.some(c => c.slug === slug)) return cat;
+    }
+    return null;
+  };
+
+  const categoryInfo = selectedCategory ? findCategoryBySlug(selectedCategory, apiCategories) : null;
+  const parentCategoryInfo = selectedCategory ? findParentOfSlug(selectedCategory, apiCategories) : null;
+  const sidebarCategories = apiCategories.length > 0 ? apiCategories : categories;
 
   // Fetch products from API
   useEffect(() => {
@@ -293,17 +341,36 @@ export default function ShopPage() {
             />
             <span className="text-sm text-secondary">All Categories</span>
           </label>
-          {categories.map((cat) => (
-            <label key={cat.id} className="flex items-center gap-2 cursor-pointer py-1">
-              <input
-                type="radio"
-                name="category"
-                checked={selectedCategory === cat.slug}
-                onChange={() => updateFilter('category', cat.slug)}
-                className="w-4 h-4 text-primary"
-              />
-              <span className="text-sm text-secondary">{cat.name}</span>
-            </label>
+          {sidebarCategories.map((cat) => (
+            <div key={cat._id || cat.id}>
+              <label className="flex items-center gap-2 cursor-pointer py-1">
+                <input
+                  type="radio"
+                  name="category"
+                  checked={selectedCategory === cat.slug}
+                  onChange={() => updateFilter('category', cat.slug)}
+                  className="w-4 h-4 text-primary"
+                />
+                <span className="text-sm text-secondary font-medium">{cat.name}</span>
+              </label>
+              {/* Sub-categories */}
+              {cat.children?.length > 0 && (
+                <div className="pl-6 space-y-1">
+                  {cat.children.map((sub) => (
+                    <label key={sub._id || sub.id} className="flex items-center gap-2 cursor-pointer py-1">
+                      <input
+                        type="radio"
+                        name="category"
+                        checked={selectedCategory === sub.slug}
+                        onChange={() => updateFilter('category', sub.slug)}
+                        className="w-3.5 h-3.5 text-primary"
+                      />
+                      <span className="text-sm text-muted-foreground">{sub.name}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
           ))}
         </div>
       </FilterSection>
@@ -449,6 +516,7 @@ export default function ShopPage() {
             {/* Category Header */}
             <CategoryHeader
               category={categoryInfo}
+              parentCategory={parentCategoryInfo}
               totalProducts={totalProducts}
             />
 

@@ -37,6 +37,7 @@ import ProductManagement from './pages/admin/ProductManagement';
 import ProductForm from './pages/admin/ProductForm';
 import OrderManagement from './pages/admin/OrderManagement';
 import CustomerManagement from './pages/admin/CustomerManagement';
+import CategoryManagement from './pages/admin/CategoryManagement';
 import AdminSettings from './pages/admin/AdminSettings';
 
 import { useAuthStore } from './store/useAuthStore';
@@ -60,6 +61,8 @@ function App() {
         <Route path="/" element={<RootLayout />}>
           <Route index element={<HomePage />} />
           <Route path="shop" element={<ShopPage />} />
+          <Route path="shop/:categorySlug" element={<ShopPage />} />
+          <Route path="shop/:categorySlug/:subCategorySlug" element={<ShopPage />} />
           <Route path="about" element={<AboutPage />} />
           <Route path="contact" element={<ContactPage />} />
           <Route path="faq" element={<FAQPage />} />
@@ -122,6 +125,7 @@ function App() {
           <Route path="products/:id/edit" element={<ProductForm />} />
           <Route path="orders" element={<OrderManagement />} />
           <Route path="customers" element={<CustomerManagement />} />
+          <Route path="categories" element={<CategoryManagement />} />
           <Route path="settings" element={<AdminSettings />} />
         </Route>
       </Routes>

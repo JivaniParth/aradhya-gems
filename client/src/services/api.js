@@ -226,4 +226,25 @@ export const adminAPI = {
     api.put('/admin/change-password', data)
 };
 
+// ═══════════════════════════════════════════════════════
+// CATEGORY API
+// ═══════════════════════════════════════════════════════
+export const categoryAPI = {
+  getHierarchy: () =>
+    api.get('/products/categories'),
+
+  // Admin
+  getAll: () =>
+    api.get('/admin/categories'),
+
+  create: (data) =>
+    api.post('/admin/categories', data),
+
+  update: (id, data) =>
+    api.put(`/admin/categories/${id}`, data),
+
+  delete: (id) =>
+    api.delete(`/admin/categories/${id}`)
+};
+
 export default api;

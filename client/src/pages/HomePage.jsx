@@ -5,7 +5,7 @@ import { Button } from '../components/ui/Button';
 import ProductCard from '../components/shop/ProductCard';
 import { WhyBuyFromUs, TrustStrip } from '../components/common/TrustComponents';
 import HeroCarousel from '../components/common/HeroCarousel';
-import { productAPI } from '../services/api';
+import { productAPI, categoryAPI } from '../services/api';
 import {
   categories,
   occasions
@@ -129,46 +129,75 @@ function ProductCarousel({ products, title, subtitle, viewAllLink, loading }) {
 }
 
 // ========================================
-// CATEGORY GRID (Intent-based navigation)
+// CATEGORY SECTION (Nova Jewels-inspired circular cards)
 // ========================================
-function CategoryCard({ category }) {
-  return (
-    <Link
-      to={`/shop?category=${category.slug}`}
-      className="group block relative aspect-[3/4] rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-shadow duration-300"
-    >
-      <img
-        src={category.image}
-        alt={category.name}
-        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-      />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-      <div className="absolute bottom-0 left-0 right-0 p-4 md:p-5 text-white">
-        <h3 className="text-lg md:text-xl font-serif font-semibold">{category.name}</h3>
-        <p className="text-xs md:text-sm text-white/80 mt-1 line-clamp-2">{category.description}</p>
-      </div>
-    </Link>
-  );
-}
+function CategorySection() {
+  const [apiCategories, setApiCategories] = useState([]);
 
-function CategoryGrid() {
+  useEffect(() => {
+    const fetchCats = async () => {
+      try {
+        const { data } = await categoryAPI.getHierarchy();
+        setApiCategories(data.data.categories || []);
+      } catch {
+        setApiCategories([]);
+      }
+    };
+    fetchCats();
+  }, []);
+
+  // Use API parent categories or fallback to constants
+  const displayCategories = apiCategories.length > 0 ? apiCategories : categories;
+
   return (
-    <section className="py-12 md:py-16 bg-accent/30">
+    <section className="py-12 md:py-16 bg-gradient-to-b from-white via-accent/20 to-white">
       <div className="container mx-auto px-4">
-        <h2 className="text-2xl md:text-3xl font-serif font-bold text-secondary text-center mb-8">
+        <h2 className="text-2xl md:text-3xl font-serif font-bold text-secondary text-center mb-3">
           Shop by Category
         </h2>
+        <p className="text-muted-foreground text-center mb-10 max-w-md mx-auto">
+          Explore our curated collections crafted for every occasion
+        </p>
 
-        {/* 3+2 Centered Layout using Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-4 md:gap-6 mb-4 md:mb-6">
-          {categories.map((category, index) => (
-            <div
-              key={category.id}
-              className={`col-span-1 md:col-span-2 ${index === 3 ? 'md:col-start-2' : ''
-                }`}
+        <div className="flex flex-wrap justify-center gap-6 md:gap-10">
+          {displayCategories.map((category) => (
+            <Link
+              key={category._id || category.id}
+              to={`/shop/${category.slug}`}
+              className="group flex flex-col items-center gap-3 w-28 md:w-36"
             >
-              <CategoryCard category={category} />
-            </div>
+              {/* Circular image */}
+              <div className="relative">
+                <div className="w-24 h-24 md:w-32 md:h-32 rounded-full overflow-hidden
+                                border-[3px] border-white shadow-lg
+                                group-hover:shadow-xl group-hover:shadow-primary/15
+                                transition-all duration-500 ease-out
+                                group-hover:scale-105">
+                  {category.image ? (
+                    <img
+                      src={category.image}
+                      alt={category.name}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
+                      <span className="text-3xl font-serif text-primary/60">{category.name[0]}</span>
+                    </div>
+                  )}
+                </div>
+                {/* Subtle ring on hover */}
+                <div className="absolute inset-0 rounded-full border-2 border-transparent
+                                group-hover:border-primary/30 transition-colors duration-300
+                                scale-110 pointer-events-none" />
+              </div>
+
+              {/* Name */}
+              <span className="text-sm md:text-base font-medium text-secondary
+                               text-center leading-tight group-hover:text-primary
+                               transition-colors duration-300">
+                {category.name}
+              </span>
+            </Link>
           ))}
         </div>
       </div>
@@ -398,8 +427,8 @@ export default function HomePage() {
       {/* Occasion Navigation - Emotional path */}
       <OccasionStrip />
 
-      {/* Category Grid - Rational path */}
-      <CategoryGrid />
+      {/* Category Section - Circular cards */}
+      <CategorySection />
 
       {/* Best Sellers - Social proof */}
       <ProductCarousel

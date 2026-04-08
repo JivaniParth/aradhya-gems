@@ -16,8 +16,8 @@ import {
 import { useCartStore } from '../../store/useCartStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useWishlistStore } from '../../store/useWishlistStore';
-import { productAPI } from '../../services/api';
-import { categories, occasions, formatPrice } from '../../data/constants';
+import { productAPI, categoryAPI } from '../../services/api';
+import { categories as fallbackCategories, occasions, formatPrice } from '../../data/constants';
 
 // Custom SVG icons for each occasion (replaces emojis)
 const occasionIcons = {
@@ -77,8 +77,30 @@ export default function Navbar() {
   const searchInputRef = useRef(null);
   const debounceRef = useRef(null);
 
+  // Categories from API
+  const [apiCategories, setApiCategories] = useState([]);
+  const [expandedMobile, setExpandedMobile] = useState(new Set());
+  const [megaMenuOpen, setMegaMenuOpen] = useState(null); // category id for desktop
+
   const cartCount = items.reduce((acc, item) => acc + item.quantity, 0);
   const wishlistCount = wishlistItems.length;
+
+  // Fetch categories from API
+  useEffect(() => {
+    const fetchCats = async () => {
+      try {
+        const { data } = await categoryAPI.getHierarchy();
+        setApiCategories(data.data.categories || []);
+      } catch {
+        // fallback will use constants
+        setApiCategories([]);
+      }
+    };
+    fetchCats();
+  }, []);
+
+  // Use API categories or fallback
+  const navCategories = apiCategories.length > 0 ? apiCategories : fallbackCategories.map(c => ({ ...c, _id: c.id, children: [] }));
 
   // Focus search input when opened
   useEffect(() => {
@@ -126,14 +148,14 @@ export default function Navbar() {
   const handleSearchSelect = (productId) => {
     setSearchOpen(false);
     setSearchQuery('');
-    navigate(`/product/${productId} `);
+    navigate(`/product/${productId}`);
   };
 
   const handleSearchSubmit = (e) => {
     if (e && e.preventDefault) e.preventDefault();
     if (searchQuery.trim()) {
       setSearchOpen(false);
-      navigate(`/ shop ? search = ${encodeURIComponent(searchQuery)} `);
+      navigate(`/shop?search=${encodeURIComponent(searchQuery)}`);
       setSearchQuery('');
     }
   };
@@ -154,23 +176,47 @@ export default function Navbar() {
     return '';
   };
 
+  // Toggle mobile accordion
+  const toggleMobileAccordion = (catId) => {
+    setExpandedMobile(prev => {
+      const next = new Set(prev);
+      if (next.has(catId)) next.delete(catId);
+      else next.add(catId);
+      return next;
+    });
+  };
+
+  // Build category link
+  const getCategoryLink = (cat, parent) => {
+    if (parent) return `/shop/${parent.slug}/${cat.slug}`;
+    return `/shop/${cat.slug}`;
+  };
+
   return (
     <>
       {/* Main Navigation - Sticky, Minimal */}
       <nav className="sticky top-0 z-50 bg-white border-b border-gray-100">
         <div className="container mx-auto px-4">
           <div className="h-14 md:h-16 flex items-center justify-between">
-            {/* Left: Menu (Mobile) + Logo */}
-            <div className="flex items-center gap-2">
+
+            {/* Left: Menu (Mobile only) */}
+            <div className="flex items-center md:hidden" style={{ minWidth: '40px' }}>
               <button
                 onClick={() => setMobileMenuOpen(true)}
-                className="md:hidden p-2 -ml-2 hover:bg-gray-50 rounded-full"
+                className="p-2 -ml-2 hover:bg-gray-50 rounded-full"
                 aria-label="Open menu"
               >
                 <Menu className="w-5 h-5 text-secondary" />
               </button>
+            </div>
 
-              <Link to="/" className="flex items-center gap-2">
+            {/* Center: Logo — centered on mobile, left on desktop */}
+            <div className="md:flex md:items-center md:gap-8 md:flex-shrink-0">
+              {/* Mobile: absolutely centered */}
+              <Link
+                to="/"
+                className="flex items-center gap-2 md:relative absolute left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0"
+              >
                 <img src="/logo_aradhya.PNG" alt="Aradhya Gems Logo" className="h-7 sm:h-8 md:h-10 object-contain" />
                 <span className="font-serif text-lg sm:text-xl md:text-2xl font-bold text-primary whitespace-nowrap">
                   Aradhya Gems
@@ -179,22 +225,79 @@ export default function Navbar() {
             </div>
 
             {/* Center: Desktop Navigation (Hidden on mobile) */}
-            <div className="hidden md:flex items-center gap-8">
+            <div className="hidden md:flex items-center gap-6 flex-1 justify-center">
               <Link to="/shop" className="text-sm font-medium text-secondary hover:text-primary transition-colors">
                 All Jewelry
               </Link>
-              <Link to="/shop?category=necklaces" className="text-sm font-medium text-secondary hover:text-primary transition-colors">
-                Necklaces
-              </Link>
-              <Link to="/shop?category=earrings" className="text-sm font-medium text-secondary hover:text-primary transition-colors">
-                Earrings
-              </Link>
-              <Link to="/shop?category=rings" className="text-sm font-medium text-secondary hover:text-primary transition-colors">
-                Rings
-              </Link>
-              <Link to="/shop?category=pie-cut-diamond-jewelry" className="text-sm font-medium text-secondary hover:text-primary transition-colors">
-                Pie Cut Diamond Jewelry
-              </Link>
+
+              {/* Category links with mega menu */}
+              {navCategories.map((cat) => (
+                <div
+                  key={cat._id || cat.id}
+                  className="relative group"
+                  onMouseEnter={() => cat.children?.length > 0 ? setMegaMenuOpen(cat._id || cat.id) : null}
+                  onMouseLeave={() => setMegaMenuOpen(null)}
+                >
+                  <Link
+                    to={getCategoryLink(cat)}
+                    className="text-sm font-medium text-secondary hover:text-primary transition-colors flex items-center gap-1 py-4"
+                  >
+                    {cat.name}
+                    {cat.children?.length > 0 && (
+                      <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${megaMenuOpen === (cat._id || cat.id) ? 'rotate-180' : ''}`} />
+                    )}
+                  </Link>
+
+                  {/* Mega Menu Flyout */}
+                  {cat.children?.length > 0 && megaMenuOpen === (cat._id || cat.id) && (
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 pt-1 z-50">
+                      <div className="bg-white rounded-xl border border-gray-100 shadow-2xl p-6 min-w-[400px] max-w-[560px]">
+                        {/* Header */}
+                        <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
+                          <h3 className="font-serif font-semibold text-secondary text-base">
+                            {cat.name}
+                          </h3>
+                          <Link
+                            to={getCategoryLink(cat)}
+                            className="text-xs font-medium text-primary hover:underline"
+                          >
+                            View All →
+                          </Link>
+                        </div>
+
+                        {/* Sub-category grid */}
+                        <div className="grid grid-cols-3 gap-3">
+                          {cat.children.map((sub) => (
+                            <Link
+                              key={sub._id || sub.id}
+                              to={getCategoryLink(sub, cat)}
+                              className="group/item flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-primary/5 transition-colors"
+                            >
+                              {sub.image ? (
+                                <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-gray-100 group-hover/item:border-primary/30 transition-colors">
+                                  <img
+                                    src={sub.image}
+                                    alt={sub.name}
+                                    className="w-full h-full object-cover transition-transform duration-300 group-hover/item:scale-110"
+                                  />
+                                </div>
+                              ) : (
+                                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center border-2 border-gray-100 group-hover/item:border-primary/30 transition-colors">
+                                  <span className="text-lg font-serif text-primary">{sub.name[0]}</span>
+                                </div>
+                              )}
+                              <span className="text-xs font-medium text-secondary text-center leading-tight group-hover/item:text-primary transition-colors">
+                                {sub.name}
+                              </span>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+
               <Link to="/about" className="text-sm font-medium text-secondary hover:text-primary transition-colors">
                 Our Story
               </Link>
@@ -244,7 +347,7 @@ export default function Navbar() {
                     to="/account"
                     className="p-2 hover:bg-gray-100 rounded-full inline-flex items-center justify-center transition-colors"
                     aria-label="Account"
-                    title={user?.firstName ? `${user.firstName} 's Account` : 'My Account'}
+                    title={user?.firstName ? `${user.firstName}'s Account` : 'My Account'}
                   >
                     <User className="w-5 h-5 text-secondary hover:text-primary transition-colors" />
                   </Link >
@@ -307,7 +410,7 @@ export default function Navbar() {
                 </div>
               )}
 
-              {/* Shop by Category */}
+              {/* Shop by Category — Accordion */}
               <div className="p-4">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                   Shop by Category
@@ -321,17 +424,69 @@ export default function Navbar() {
                     <span className="font-medium text-secondary">All Jewelry</span>
                     <ChevronRight className="w-4 h-4 text-gray-400" />
                   </Link>
-                  {categories.map((category) => (
-                    <Link
-                      key={category.id}
-                      to={`/shop?category=${category.slug}`}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center justify-between py-3 px-2 hover:bg-gray-50 rounded-lg"
-                    >
-                      <span className="font-medium text-secondary">{category.name}</span>
-                      <ChevronRight className="w-4 h-4 text-gray-400" />
-                    </Link>
-                  ))}
+
+                  {navCategories.map((cat) => {
+                    const hasChildren = cat.children && cat.children.length > 0;
+                    const isExpanded = expandedMobile.has(cat._id || cat.id);
+
+                    return (
+                      <div key={cat._id || cat.id}>
+                        <div className="flex items-center">
+                          <Link
+                            to={getCategoryLink(cat)}
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="flex-1 py-3 px-2 hover:bg-gray-50 rounded-lg font-medium text-secondary"
+                          >
+                            {cat.name}
+                          </Link>
+                          {hasChildren && (
+                            <button
+                              onClick={() => toggleMobileAccordion(cat._id || cat.id)}
+                              className="p-2 hover:bg-gray-100 rounded-full"
+                            >
+                              <ChevronDown
+                                className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                              />
+                            </button>
+                          )}
+                          {!hasChildren && (
+                            <ChevronRight className="w-4 h-4 text-gray-400 mr-2" />
+                          )}
+                        </div>
+
+                        {/* Sub-categories accordion body */}
+                        {hasChildren && (
+                          <div
+                            className="overflow-hidden transition-all duration-300 ease-in-out"
+                            style={{
+                              maxHeight: isExpanded ? `${cat.children.length * 52}px` : '0',
+                              opacity: isExpanded ? 1 : 0
+                            }}
+                          >
+                            <div className="pl-4 border-l-2 border-primary/20 ml-4 mt-1 mb-2">
+                              {cat.children.map((sub) => (
+                                <Link
+                                  key={sub._id || sub.id}
+                                  to={getCategoryLink(sub, cat)}
+                                  onClick={() => setMobileMenuOpen(false)}
+                                  className="flex items-center gap-3 py-2.5 px-2 hover:bg-gray-50 rounded-lg"
+                                >
+                                  {sub.image ? (
+                                    <img src={sub.image} alt={sub.name} className="w-7 h-7 rounded-full object-cover" />
+                                  ) : (
+                                    <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center">
+                                      <span className="text-xs font-medium text-primary">{sub.name[0]}</span>
+                                    </div>
+                                  )}
+                                  <span className="text-sm text-secondary">{sub.name}</span>
+                                </Link>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 

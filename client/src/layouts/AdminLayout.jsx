@@ -9,13 +9,15 @@ import {
   LogOut,
   ChevronRight,
   Menu,
-  X
+  X,
+  FolderTree
 } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 
 const navItems = [
   { path: '/admin', icon: LayoutDashboard, label: 'Dashboard', end: true },
   { path: '/admin/products', icon: Package, label: 'Products' },
+  { path: '/admin/categories', icon: FolderTree, label: 'Categories' },
   { path: '/admin/orders', icon: ShoppingCart, label: 'Orders' },
   { path: '/admin/customers', icon: Users, label: 'Customers' },
   { path: '/admin/settings', icon: Settings, label: 'Settings' },
