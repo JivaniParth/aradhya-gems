@@ -56,6 +56,27 @@ export const categories = [
         seoTitle: 'Gold & Diamond Bracelets | Aradhya Gems',
         seoDescription: 'Explore our collection of gold bracelets and diamond bangles. Every piece certified for purity and authenticity.'
     },
+    {
+        id: 'diamonds',
+        name: 'Diamonds',
+        slug: 'diamonds',
+        description: 'Explore our collection of loose and set diamonds in every shape',
+        whyExists: 'Diamonds in every shape and cut, carefully curated and certified for your perfect piece.',
+        image: 'https://images.unsplash.com/photo-1610486386347-0e64bdfadbb2?q=80&w=800&auto=format&fit=crop',
+        seoTitle: 'Loose & Set Diamonds | Aradhya Gems',
+        seoDescription: 'Shop certified diamonds in all shapes: Round, Oval, Princess, Emerald, and Fancy cuts like Pie Cut & Rose Cut.',
+        children: [
+            { id: 'round', name: 'Round', slug: 'round' },
+            { id: 'princess', name: 'Princess', slug: 'princess' },
+            { id: 'oval', name: 'Oval', slug: 'oval' },
+            { id: 'emerald', name: 'Emerald', slug: 'emerald' },
+            { id: 'pie-cut', name: 'Pie Cut', slug: 'pie-cut' },
+            { id: 'rose-cut', name: 'Rose Cut', slug: 'rose-cut' },
+            { id: 'marquise', name: 'Marquise', slug: 'marquise' },
+            { id: 'pear', name: 'Pear', slug: 'pear' },
+            { id: 'cushion', name: 'Cushion', slug: 'cushion' }
+        ]
+    }
 ];
 
 // Material definitions with educational content

@@ -100,7 +100,7 @@ export default function Navbar() {
   }, []);
 
   // Use API categories or fallback
-  const navCategories = apiCategories.length > 0 ? apiCategories : fallbackCategories.map(c => ({ ...c, _id: c.id, children: [] }));
+  const navCategories = apiCategories.length > 0 ? apiCategories : fallbackCategories.map(c => ({ ...c, _id: c.id, children: c.children || [] }));
 
   // Focus search input when opened
   useEffect(() => {
@@ -218,7 +218,7 @@ export default function Navbar() {
                 className="flex items-center gap-2 md:relative absolute left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0"
               >
                 <img src="/logo_aradhya.PNG" alt="Aradhya Gems Logo" className="h-7 sm:h-8 md:h-10 object-contain" />
-                <span className="font-serif text-lg sm:text-xl md:text-2xl font-bold text-primary whitespace-nowrap">
+                <span className="hidden md:inline font-serif text-lg sm:text-xl md:text-2xl font-bold text-primary whitespace-nowrap">
                   Aradhya Gems
                 </span>
               </Link>
