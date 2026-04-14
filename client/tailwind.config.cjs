@@ -25,8 +25,8 @@ module.exports = {
         foreground: "#0F172A",
       },
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
-        serif: ['Playfair Display', 'serif'],
+        sans: ['Jost', 'sans-serif'],
+        serif: ['"Cormorant Garamond"', 'serif'],
       }
     },
   },

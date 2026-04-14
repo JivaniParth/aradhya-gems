@@ -74,6 +74,7 @@ export default function Navbar() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [trendingProducts, setTrendingProducts] = useState([]);
   const searchInputRef = useRef(null);
   const debounceRef = useRef(null);
 
@@ -102,10 +103,33 @@ export default function Navbar() {
   // Use API categories or fallback
   const navCategories = apiCategories.length > 0 ? apiCategories : fallbackCategories.map(c => ({ ...c, _id: c.id, children: c.children || [] }));
 
-  // Focus search input when opened
+  // Focus search input when opened & fetch trending products
   useEffect(() => {
-    if (searchOpen && searchInputRef.current) {
-      searchInputRef.current.focus();
+    if (searchOpen) {
+      if (searchInputRef.current) searchInputRef.current.focus();
+      // Fetch trending/featured products for "no results" recovery
+      if (trendingProducts.length === 0) {
+        // Static fallback so "Trending Now" always has content
+        const staticFallback = [
+          { _id: 'trending-1', name: 'Gold Necklace Set', category: 'Necklaces', price: 45000, image: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?q=80&w=200&auto=format&fit=crop' },
+          { _id: 'trending-2', name: 'Diamond Stud Earrings', category: 'Earrings', price: 32000, image: 'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?q=80&w=200&auto=format&fit=crop' },
+          { _id: 'trending-3', name: 'Classic Gold Ring', category: 'Rings', price: 18000, image: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?q=80&w=200&auto=format&fit=crop' },
+        ];
+
+        productAPI.getFeatured()
+          .then(({ data }) => {
+            const products = data.data?.products || data.data || [];
+            setTrendingProducts(products.length > 0 ? products.slice(0, 3) : staticFallback);
+          })
+          .catch(() => {
+            productAPI.getAll({ sort: 'newest', limit: 3 })
+              .then(({ data }) => {
+                const products = (data.data?.products || []).slice(0, 3);
+                setTrendingProducts(products.length > 0 ? products : staticFallback);
+              })
+              .catch(() => setTrendingProducts(staticFallback));
+          });
+      }
     }
   }, [searchOpen]);
 
@@ -684,9 +708,35 @@ export default function Navbar() {
                 )}
 
                 {!searchLoading && searchQuery && searchResults.length === 0 && (
-                  <div className="mt-4 pt-4 border-t text-center py-8">
-                    <p className="text-muted-foreground">No results for "{searchQuery}"</p>
-                    <p className="text-sm text-muted-foreground mt-1">Try a different search term</p>
+                  <div className="mt-4 pt-4 border-t">
+                    <p className="text-muted-foreground text-center mb-1">No results for "{searchQuery}"</p>
+                    {trendingProducts.length > 0 && (
+                      <>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase mt-4 mb-3">Trending Now</p>
+                        <div className="space-y-2">
+                          {trendingProducts.map((product) => (
+                            <button
+                              key={product._id}
+                              onClick={() => handleSearchSelect(product._id)}
+                              className="w-full flex items-center gap-4 p-3 hover:bg-gray-50 rounded-lg text-left transition-colors duration-500"
+                            >
+                              <img
+                                src={getProductImage(product)}
+                                alt={product.name}
+                                className="w-14 h-14 object-cover rounded-lg"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-secondary truncate">{product.name}</p>
+                                <p className="text-sm text-muted-foreground">{product.category}</p>
+                              </div>
+                              <p className="font-medium text-primary">
+                                {formatPrice(product.price)}
+                              </p>
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
               </div>

@@ -127,6 +127,139 @@ function CollapsibleSection({ title, children, defaultOpen = false }) {
 }
 
 // ========================================
+// PURITY TOGGLE — Interactive Education
+// ========================================
+const PURITY_DATA = [
+  {
+    key: '14k',
+    label: '14K Gold',
+    pureGold: 58.3,
+    value: 55,
+    durability: 95,
+    alloy: 'Composed of 58.3% pure gold mixed with copper, silver, and zinc. Exceptionally durable — ideal for everyday jewelry that withstands daily wear.',
+    color: 'from-amber-300 to-amber-500',
+  },
+  {
+    key: '18k',
+    label: '18K Gold',
+    pureGold: 75,
+    value: 75,
+    durability: 70,
+    alloy: 'Contains 75% pure gold with a balance of copper and silver. The luxury standard — a perfect harmony of rich color and practical wearability.',
+    color: 'from-yellow-400 to-amber-500',
+  },
+  {
+    key: '22k',
+    label: '22K Gold',
+    pureGold: 91.6,
+    value: 95,
+    durability: 40,
+    alloy: 'Comprised of 91.6% pure gold with minimal alloying. Intensely rich color and high intrinsic value — traditionally favored for heirloom pieces and bridal jewelry.',
+    color: 'from-yellow-500 to-orange-500',
+  },
+];
+
+function PurityToggle({ material, currentPurity }) {
+  // Auto-select the purity that matches the product, default to 18k
+  const initialKey = PURITY_DATA.find(
+    (p) => currentPurity?.toLowerCase().includes(p.key)
+  )?.key || '18k';
+
+  const [selected, setSelected] = useState(initialKey);
+  const active = PURITY_DATA.find((p) => p.key === selected) || PURITY_DATA[1];
+
+  return (
+    <section className="mt-16 bg-accent/30 rounded-xl p-6 md:p-8">
+      <h3 className="text-xl font-serif font-bold text-secondary mb-2">
+        Understanding Gold Purity
+      </h3>
+      <p className="text-sm text-muted-foreground mb-6">
+        Toggle between purity levels to compare value, durability, and composition.
+      </p>
+
+      {/* Segmented Pill Switch */}
+      <div className="inline-flex bg-white rounded-full p-1 shadow-sm border border-gray-200 mb-8">
+        {PURITY_DATA.map((p) => (
+          <button
+            key={p.key}
+            onClick={() => setSelected(p.key)}
+            className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-500 ${selected === p.key
+                ? 'bg-primary text-secondary shadow-md'
+                : 'text-muted-foreground hover:text-secondary'
+              }`}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-8">
+        {/* Left: Meters */}
+        <div className="space-y-5">
+          {/* Pure Gold Percentage */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-sm font-medium text-secondary">Pure Gold</span>
+              <span className="text-sm font-bold text-primary">{active.pureGold}%</span>
+            </div>
+            <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full bg-gradient-to-r ${active.color} transition-all duration-700 ease-out`}
+                style={{ width: `${active.pureGold}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Value Meter */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-sm font-medium text-secondary">Intrinsic Value</span>
+              <span className="text-sm text-muted-foreground">{active.value}/100</span>
+            </div>
+            <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-600 transition-all duration-700 ease-out"
+                style={{ width: `${active.value}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Durability Meter */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-sm font-medium text-secondary">Durability</span>
+              <span className="text-sm text-muted-foreground">{active.durability}/100</span>
+            </div>
+            <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-blue-400 to-blue-600 transition-all duration-700 ease-out"
+                style={{ width: `${active.durability}%` }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Alloy Description */}
+        <div className="flex flex-col justify-center">
+          <h4 className="font-medium text-secondary mb-2 font-serif text-lg">
+            {active.label} Composition
+          </h4>
+          <p className="text-sm text-muted-foreground leading-relaxed transition-opacity duration-500">
+            {active.alloy}
+          </p>
+          <Link
+            to="/guide/metals"
+            className="inline-block mt-4 text-sm text-primary font-medium hover:underline transition-colors duration-500"
+          >
+            Read our complete metal guide →
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ========================================
 // MAIN PRODUCT DETAILS PAGE
 // ========================================
 export default function ProductDetailsPage() {
@@ -545,33 +678,8 @@ export default function ProductDetailsPage() {
           </section>
         )}
 
-        {/* Education Section - Inline, Optional */}
-        <section className="mt-16 bg-accent/30 rounded-xl p-6 md:p-8">
-          <h3 className="text-xl font-serif font-bold text-secondary mb-4">
-            Understanding {product.material} Jewelry
-          </h3>
-          <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <h4 className="font-medium text-secondary mb-2">About {product.purity}</h4>
-              <p className="text-sm text-muted-foreground">
-                {materialInfo?.description} {materialInfo?.careNote}
-              </p>
-            </div>
-            <div>
-              <h4 className="font-medium text-secondary mb-2">Why We Chose This Material</h4>
-              <p className="text-sm text-muted-foreground">
-                This piece uses {product.material} for its perfect balance of beauty and durability,
-                ensuring it can be worn and treasured for generations.
-              </p>
-            </div>
-          </div>
-          <Link
-            to="/guide/metals"
-            className="inline-block mt-4 text-sm text-primary font-medium hover:underline"
-          >
-            Read our complete metal guide →
-          </Link>
-        </section>
+        {/* Interactive Purity Education Module */}
+        <PurityToggle material={product.material} currentPurity={product.purity} />
       </div>
     </div>
   );

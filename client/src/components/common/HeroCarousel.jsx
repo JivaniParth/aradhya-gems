@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '../ui/Button';
@@ -35,9 +35,9 @@ const slides = [
     id: 4,
     badge: 'Everyday Luxury',
     title: 'Elegance for Every Moment',
-    subtitle: 'Lightweight, durable pieces designed for daily wear. Starting from ₹15,000.',
+    subtitle: 'Lightweight, durable pieces designed for daily wear. Starting from \u20B915,000.',
     primaryBtn: { text: 'Shop Daily Wear', link: '/shop?occasion=daily-wear' },
-    secondaryBtn: { text: 'Under ₹25K', link: '/shop?maxPrice=25000' },
+    secondaryBtn: { text: 'Under \u20B925K', link: '/shop?maxPrice=25000' },
     image: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?q=80&w=1920&auto=format&fit=crop'
   }
 ];
@@ -46,6 +46,8 @@ export default function HeroCarousel() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [parallax, setParallax] = useState({ x: 0, y: 0 });
+  const sectionRef = useRef(null);
 
   const goToSlide = useCallback((index) => {
     if (isAnimating) return;
@@ -73,21 +75,44 @@ export default function HeroCarousel() {
     return () => clearInterval(timer);
   }, [nextSlide, isPaused]);
 
+  // Mouse-move parallax handler
+  const handleMouseMove = useCallback((e) => {
+    if (!sectionRef.current) return;
+    const rect = sectionRef.current.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    // Shift 8px opposite to cursor direction
+    const offsetX = -((e.clientX - centerX) / rect.width) * 8;
+    const offsetY = -((e.clientY - centerY) / rect.height) * 8;
+    setParallax({ x: offsetX, y: offsetY });
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    setIsPaused(false);
+    setParallax({ x: 0, y: 0 });
+  }, []);
+
   const slide = slides[currentSlide];
 
   return (
     <section
+      ref={sectionRef}
       className="relative bg-secondary text-white overflow-hidden"
       onMouseEnter={() => setIsPaused(true)}
-      onMouseLeave={() => setIsPaused(false)}
+      onMouseLeave={handleMouseLeave}
+      onMouseMove={handleMouseMove}
     >
-      {/* Background Image with Gradient Overlay */}
+      {/* Background Image with Parallax & Gradient Overlay */}
       <div className="absolute inset-0">
         <img
           key={slide.id}
           src={slide.image}
           alt=""
-          className="w-full h-full object-cover transition-opacity duration-700"
+          className="w-full h-full object-cover transition-all duration-700 ease-out"
+          style={{
+            transform: `translate(${parallax.x}px, ${parallax.y}px) scale(1.05)`,
+            willChange: 'transform',
+          }}
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/40 z-10" />
       </div>
@@ -159,18 +184,18 @@ export default function HeroCarousel() {
       {/* Navigation Arrows */}
       <button
         onClick={prevSlide}
-        className="absolute left-2 md:left-6 top-1/2 -translate-y-1/2 z-30 p-2 md:p-3 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-all duration-300 group"
+        className="absolute left-2 md:left-6 top-1/2 -translate-y-1/2 z-30 p-2 md:p-3 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-all duration-500 group"
         aria-label="Previous slide"
       >
-        <ChevronLeft className="w-5 h-5 md:w-6 md:h-6 text-white group-hover:scale-110 transition-transform" />
+        <ChevronLeft className="w-5 h-5 md:w-6 md:h-6 text-white group-hover:scale-110 transition-transform duration-500" />
       </button>
 
       <button
         onClick={nextSlide}
-        className="absolute right-2 md:right-6 top-1/2 -translate-y-1/2 z-30 p-2 md:p-3 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-all duration-300 group"
+        className="absolute right-2 md:right-6 top-1/2 -translate-y-1/2 z-30 p-2 md:p-3 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-all duration-500 group"
         aria-label="Next slide"
       >
-        <ChevronRight className="w-5 h-5 md:w-6 md:h-6 text-white group-hover:scale-110 transition-transform" />
+        <ChevronRight className="w-5 h-5 md:w-6 md:h-6 text-white group-hover:scale-110 transition-transform duration-500" />
       </button>
 
       {/* Dot Indicators */}
@@ -179,9 +204,9 @@ export default function HeroCarousel() {
           <button
             key={index}
             onClick={() => goToSlide(index)}
-            className={`transition-all duration-300 rounded-full ${index === currentSlide
-                ? 'w-8 h-2 bg-primary'
-                : 'w-2 h-2 bg-white/40 hover:bg-white/60'
+            className={`transition-all duration-500 rounded-full ${index === currentSlide
+              ? 'w-8 h-2 bg-primary'
+              : 'w-2 h-2 bg-white/40 hover:bg-white/60'
               }`}
             aria-label={`Go to slide ${index + 1}`}
           />

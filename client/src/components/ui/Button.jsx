@@ -3,7 +3,7 @@ import { cn } from '../../lib/utils'; // Corrected path to ../../lib/utils
 
 const Button = React.forwardRef(({ className, variant = 'primary', size = 'default', ...props }, ref) => {
   const variants = {
-    primary: 'bg-primary text-secondary hover:bg-primary-hover',
+    primary: 'bg-primary text-secondary hover:bg-primary-hover btn-shimmer',
     secondary: 'bg-secondary text-primary hover:bg-secondary/90',
     outline: 'border border-primary text-primary hover:bg-primary/10',
     ghost: 'hover:bg-accent hover:text-accent-foreground',
@@ -19,7 +19,7 @@ const Button = React.forwardRef(({ className, variant = 'primary', size = 'defau
   return (
     <button
       className={cn(
-        'inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 ring-offset-background',
+        'inline-flex items-center justify-center rounded-md text-sm font-medium transition-all duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 ring-offset-background relative overflow-hidden',
         variants[variant],
         sizes[size],
         className
