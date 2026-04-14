@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams, useParams, Link } from 'react-router-dom';
+import { useSearchParams, useParams, Link, useNavigate } from 'react-router-dom';
 import {
   Filter,
   X,
@@ -193,6 +193,7 @@ function FilterSection({ title, children, defaultOpen = true }) {
 export default function ShopPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { categorySlug, subCategorySlug } = useParams();
+  const navigate = useNavigate();
   const { fetchRates } = useCurrencyStore();
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [gridCols, setGridCols] = useState(3);
@@ -303,13 +304,25 @@ export default function ShopPage() {
   };
 
   const removeFilter = (key) => {
+    if (key === 'category' && categorySlug) {
+      // Category is set via route param, navigate to /shop
+      const preserved = new URLSearchParams(searchParams);
+      preserved.delete('category');
+      const qs = preserved.toString();
+      navigate(qs ? `/shop?${qs}` : '/shop');
+      return;
+    }
     const newParams = new URLSearchParams(searchParams);
     newParams.delete(key);
     setSearchParams(newParams);
   };
 
   const clearAllFilters = () => {
-    setSearchParams({});
+    if (categorySlug) {
+      navigate('/shop');
+    } else {
+      setSearchParams({});
+    }
   };
 
   const activeFilters = {
@@ -326,6 +339,20 @@ export default function ShopPage() {
   // ========================================
   // FILTER SIDEBAR CONTENT
   // ========================================
+  // Navigate to a category route, preserving non-category query params
+  const navigateToCategory = (slug, parentSlug) => {
+    // Preserve existing non-category params
+    const preserved = new URLSearchParams();
+    for (const [key, val] of searchParams.entries()) {
+      if (key !== 'category') preserved.set(key, val);
+    }
+    const qs = preserved.toString();
+    let path = '/shop';
+    if (parentSlug && slug) path = `/shop/${parentSlug}/${slug}`;
+    else if (slug) path = `/shop/${slug}`;
+    navigate(qs ? `${path}?${qs}` : path);
+  };
+
   const FilterSidebarContent = () => (
     <div className="space-y-2">
       {/* Categories */}
@@ -336,7 +363,7 @@ export default function ShopPage() {
               type="radio"
               name="category"
               checked={!selectedCategory}
-              onChange={() => updateFilter('category', '')}
+              onChange={() => navigateToCategory('', '')}
               className="w-4 h-4 text-primary"
             />
             <span className="text-sm text-secondary">All Categories</span>
@@ -348,7 +375,7 @@ export default function ShopPage() {
                   type="radio"
                   name="category"
                   checked={selectedCategory === cat.slug}
-                  onChange={() => updateFilter('category', cat.slug)}
+                  onChange={() => navigateToCategory(cat.slug, '')}
                   className="w-4 h-4 text-primary"
                 />
                 <span className="text-sm text-secondary font-medium">{cat.name}</span>
@@ -362,7 +389,7 @@ export default function ShopPage() {
                         type="radio"
                         name="category"
                         checked={selectedCategory === sub.slug}
-                        onChange={() => updateFilter('category', sub.slug)}
+                        onChange={() => navigateToCategory(sub.slug, cat.slug)}
                         className="w-3.5 h-3.5 text-primary"
                       />
                       <span className="text-sm text-muted-foreground">{sub.name}</span>
